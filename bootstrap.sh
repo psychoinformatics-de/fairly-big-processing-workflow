@@ -15,6 +15,7 @@ git_email="$(git config user.email)"
 #-------------------------------------------------------------------------------
 # define the dataset store all output will go to
 output_store="ria+file:///data/group/psyinf/forrestoutput"
+input_store="ria+file:///data/group/psyinf/forrestinput"
 
 # ------------------------------------------------------------------------------
 # FIX-ME: Supply RIA URLs to the RIA stores that host the container dataset and
@@ -68,7 +69,12 @@ cp /data/group/psyinf/ukb_workflow_template/code_cat_standalone_batchUKB.txt cod
 datalad save -m "Import desired CAT batch configuration"
 git commit --no-edit --amend --author "Felix Hoffstaedter <f.hoffstaedter@fz-juelich.de>"
 
+# create dedicated input and output locations
+datalad create-sibling-ria -s joc "${output_store}"
+pushremote=$(git remote get-url --push joc)
+datalad create-sibling-ria -s input --storage-sibling off "${input_store}"
 
+# TODO: more generic sibling name
 #-------------------------------------------------------------------------------
 # FIX-ME: Replace '~bids' with an alias or dataset ID of your own input dataset.
 # FIX-ME: Replace "ukb" with a name of your choice
@@ -197,7 +203,7 @@ should_transfer_files = yes
 transfer_output_files = ""
 
 # the actual job script, nothing condor-specific in it
-executable     = $ENV(PWD)/code/participant_job
+executable     = \$ENV(PWD)/code/participant_job
 
 # the job expects these environment variables for labeling and synchronization
 # - JOBID: subject AND process specific ID to make a branch name from
@@ -210,28 +216,28 @@ executable     = $ENV(PWD)/code/participant_job
 #     a configured URL is outdated
 # - GIT_AUTHOR_...: Identity information used to save dataset changes in compute
 #     jobs
-environment = "\
-  JOBID=$(subject).$(Cluster) \
-  DSLOCKFILE=$ENV(PWD)/.condor_datalad_lock \
+environment = "\\
+  JOBID=\$(subject).\$(Cluster) \\
+  DSLOCKFILE=\$ENV(PWD)/.condor_datalad_lock \\
 #  DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__100ukb='ria+http://ukb.ds.inm7.de#{id}' \
-  DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__101cat='ria+http://containers.ds.inm7.de#{id}' \
-  GIT_AUTHOR_NAME='Michael Hanke' \
-  GIT_AUTHOR_EMAIL='michael.hanke@gmail.com' \
+  DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__101cat='ria+http://containers.ds.inm7.de#{id}' \\
+  GIT_AUTHOR_NAME='${git_name}' \\
+  GIT_AUTHOR_EMAIL='${git_email}' \\
   "
 
 # place the job logs into PWD/logs, using the same name as for the result branches
 # (JOBID)
-log    = $ENV(PWD)/logs/$(subject)_$(Cluster).log
-output = $ENV(PWD)/logs/$(subject)_$(Cluster).out
-error  = $ENV(PWD)/logs/$(subject)_$(Cluster).err
-# essential args for `participant_job`
+log    = \$ENV(PWD)/logs/\$(subject)_\$(Cluster).log
+output = \$ENV(PWD)/logs/\$(subject)_\$(Cluster).out
+error  = \$ENV(PWD)/logs/\$(subject)_\$(Cluster).err
+# essential args for 'participant_job'
 # 1: where to clone the analysis dataset
-# 2: location to push the result git branch to
+# 2: location to push the result git branch to. The 'ria+' prefix is stripped.
 # 3: ID of the subject to process
-arguments = "\
-  ria+file:///data/project/ukb_vbm/inputstore#8938de76-0302-45b5-9825-3c6ce3f3fffe \
-  file:///data/project/ukb_vbm/outputstore/893/8de76-0302-45b5-9825-3c6ce3f3fffe \
-  sub-$(subject) \
+arguments = "\\
+  ${input_store}#$(datalad -f '{infos[dataset][id]}' wtf -S dataset) \\
+  ${pushremote} \\
+  sub-\$(subject) \\
   "
 queue
 EOT
@@ -261,7 +267,7 @@ datalad uninstall -r --nocheck inputs/studyforrest
 # store
 # juseless-output-collector (joc)
 # TODO: make this generic, more explanation
-datalad create-sibling-ria -s joc "${output_store}"
+datalad push --to input
 datalad push --to joc
 
 # if we get here, we are happy
