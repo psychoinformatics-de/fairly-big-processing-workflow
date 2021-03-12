@@ -8,21 +8,49 @@ set -e -u
 # define ID for git commits (take from local user configuration)
 git_name="$(git config user.name)"
 git_email="$(git config user.email)"
+
+# ------------------------------------------------------------------------------
+# FIX-ME: Supply a RIA-URL to a RIA store that will collect all outputs. This
+# RIA store will be created if it doesn't yet exist.
+#-------------------------------------------------------------------------------
 # define the dataset store all output will go to
 output_store="ria+file:///data/project/ukb_vbm/outputstore"
+
+# ------------------------------------------------------------------------------
+# FIX-ME: Supply RIA URLs to the RIA stores that host the container dataset and
+# the input dataset. TODO: add "how to" in README
+#-------------------------------------------------------------------------------
 # define the location of the stores all analysis inputs will be obtained from
 container_store="ria+http://containers.ds.inm7.de"
 ukb_raw_store="ria+http://ukb.ds.inm7.de"
+#TODO: make the "ukb_raw_store" name generic
+#-------------------------------------------------------------------------------
+# FIX-ME: Replace "ukb_cat" with a dataset name of your choice.
+#-------------------------------------------------------------------------------
+source_ds="ukb_cat"
 
-# all results a tracked in a single output dataset
-# create a fresh one
-# job submission will take place from a checkout of this dataset, but no
-# results will be pushed into it
-datalad create -c yoda ukb_cat
-cd ukb_cat
+# Create a source dataset with all analysis components as an analysis access
+# point. Job submission will take place from a checkout of this dataset, but no
+# results will be pushed into itdatalad create -c yoda $source_ds
+cd $source_ds
 
+#-------------------------------------------------------------------------------
+# FIX-ME: Replace '~cat' with an alias or dataset ID of your own container
+# dataset.
+#-------------------------------------------------------------------------------
 # register a container with the CAT tool
 datalad clone -d . "${container_store}#~cat" code/pipeline
+
+# TODO: add a variable for the container name!
+
+#-------------------------------------------------------------------------------
+# FIX-ME: Configure your own container call in the --call-fmt argument.
+# {img} and {cmd} are standard placeholders and  will be replaced
+# with the container name and the command given in "datalad containers-run".
+# Curly brackets in any other parts of this configuration need to be escaped with
+# another curly bracket. Replace '~cat' with an alias or dataset ID of your own container
+# dataset.
+#-------------------------------------------------------------------------------
 # configure a custom container call to satisfy the needs of this analysis
 datalad containers-add \
   --call-fmt 'singularity exec -B {{pwd}} --cleanenv {img} {cmd}' \
@@ -39,12 +67,20 @@ cp /data/project/ukb_vbm/code_cat_standalone_batchUKB.txt code/cat_standalone_ba
 datalad save -m "Import desired CAT batch configuration"
 git commit --no-edit --amend --author "Felix Hoffstaedter <f.hoffstaedter@fz-juelich.de>"
 
+
+#-------------------------------------------------------------------------------
+# FIX-ME: Replace '~bids' with an alias or dataset ID of your own input dataset.
+# FIX-ME: Replace "ukb" with a name of your choice
+#-------------------------------------------------------------------------------
 # register the UKB input dataset, a superdataset with 42k subdatasets
 # comprising all participants
 datalad clone -d . "${ukb_raw_store}#~bids" inputs/ukb
 git commit --amend -m 'Register UKB raw dataset in BIDS format as input'
 
 # the actual compute job specification
+# TODO: Replace references to analysis-specific stuff in commands (e.g., "ukb")
+# TODO: make "joc" more generic, explain that "joc-storage" will be setup
+# automatically
 cat > code/participant_job << "EOT"
 #!/bin/bash
 
@@ -137,8 +173,13 @@ datalad save -m "Participant compute job implementation"
 mkdir logs
 echo logs >> .gitignore
 echo dag_tmp >> .gitignore
+# TODO: explain lock file in README
 echo .condor_datalad_lock >> .gitignore
 
+#-------------------------------------------------------------------------------
+# FIX-ME: Adjust job requirements to your needs
+#-------------------------------------------------------------------------------
+# TODO: Think about clone candidate sources
 # compute environment for a single job
 cat > code/process.condor_submit << EOT
 universe       = vanilla
@@ -193,7 +234,7 @@ arguments = "\
   "
 queue
 EOT
-
+# TODO: make this more generic, provide explanation
 # processing graph specification for computing all jobs
 cat > code/process.condor_dag << "EOT"
 # Processing DAG
@@ -215,6 +256,7 @@ datalad uninstall -r --nocheck inputs/ukb
 # make sure the fully configured output dataset is available from the designated
 # store
 # juseless-output-collector (joc)
+# TODO: make this generic, more explanation
 datalad create-sibling-ria -s joc "${output_store}"
 datalad push --to joc
 
