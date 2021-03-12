@@ -54,20 +54,30 @@ cat > code/participant_job << "EOT"
 # fail whenever something is fishy, use -x to get verbose logfiles
 set -e -u -x
 
-dsstore="$1"
-dsid="$2"
+dssource="$1"
+pushgitremote="$2"
 subid="$3"
 
-# get the output dataset, which includes the inputs as <F6><F6>well
-# flock makes sure that this does not interfere with another job
-# finishing at the same time, and pushing its results back
-# importantly, we clone from the lcoation that we want to push the
-# results too
-flock --verbose $DSLOCKFILE \
-        datalad clone "${dsstore}#${dsid}" ds
+# get the analysis dataset, which includes the inputs as well
+# importantly, we do not clone from the lcoation that we want to push the
+# results too, in order to avoid too many jobs blocking access to
+# the same location and creating a throughput bottleneck
+datalad clone "${dssource}" ds
 
 # all following actions are performed in the context of the superdataset
 cd ds
+
+# in order to avoid accumulation temporary git-annex availability information
+# and to avoid a syncronization bottleneck by having to consolidate the
+# git-annex branch across jobs, we will only push the main tracking branch
+# back to the output store (plus the actual file content). Final availability
+# information can be establish via an eventual `git-annex fsck -f joc-storage`.
+# this remote is never fetched, it accumulates a larger number of branches
+# and we want to avoid progressive slowdown. Instead we only ever push
+# a unique branch per each job (subject AND process specific name)
+git remote add outputstore "$pushgitremote"
+
+# all results of this job will be put into a dedicated branch
 git checkout -b "job-$JOBID"
 
 # we pull down the input subject manually in order to discover relevant
@@ -77,13 +87,17 @@ git checkout -b "job-$JOBID"
 # recomputation outside the scope of the original Condor setup
 datalad get -n "inputs/ukb/${subid}"
 
-# the meat of the matter, add actual parameterization after --participant-label
+# the meat of the matter
+# look for T1w files in the input data for the given participant
+# it is critical for reproducibility that the command given to
+# `containers-run` does not rely on any property of the immediate
+# computational environment (env vars, services, etc)
 find \
   inputs/ukb/${subid} \
   -name '*T1w.nii.gz' \
   -exec sh -c '
     odir=$(echo {} | cut -d / -f3-4);
-    datalad containers-run \
+    datalad -c datalad.annex.retry=12 containers-run \
       -m "Compute $odir" \
       -n cat \
       --explicit \
@@ -104,9 +118,13 @@ find \
 
 # it may be that the above command did not yield any outputs
 # and no commit was made (no T1s found for the given participant)
-# we nevertheless push the branch to have a records that this was
+# we nevertheless push the branch to have a record that this was
 # attempted and did not fail
-flock --verbose $DSLOCKFILE datalad push --to origin
+
+# file content first -- does not need a lock, no interaction with Git
+datalad push --to joc-storage
+# and the output branch
+flock --verbose $DSLOCKFILE git push outputstore
 
 echo SUCCESS
 # job handler should clean up workspace
