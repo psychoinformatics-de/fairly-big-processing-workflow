@@ -1,32 +1,36 @@
 set -e -u
 
+#
+#                      HOW TO USE
+#
+# Please adjust every variable with a "FIX-ME" comment on top.
+
+
+
 # Jobs are set up to not require a shared filesystem (except for the lockfile)
-
-# submit DAG to condor
-# rm -rf dag_tmp; mkdir -p dag_tmp; cp code/process.condor_dag dag_tmp/ && condor_submit_dag -batch-name UKBVBM -maxidle 1 dag_tmp/process.condor_dag
-
-# define ID for git commits (take from local user configuration)
-git_name="$(git config user.name)"
-git_email="$(git config user.email)"
-
 # ------------------------------------------------------------------------------
-# FIX-ME: Supply a RIA-URL to a RIA store that will collect all outputs. This
-# RIA store will be created if it doesn't yet exist.
+# FIX-ME: Supply a RIA-URL to a RIA store that will collect all outputs, and a
+# RIA-URL to a different RIA store from which the dataset will be cloned from.
+# Both RIA stores will be created if it doesn't yet exist.
+# Note: 'input_store' can be removed after processing has finished. It exists in
+# order to be a safe and non-changing place from where the analysis source
+# dataset is cloned from.
 #-------------------------------------------------------------------------------
-# define the dataset store all output will go to
 output_store="ria+file:///data/group/psyinf/forrestoutput"
 input_store="ria+file:///data/group/psyinf/forrestinput"
 
 # ------------------------------------------------------------------------------
-# FIX-ME: Supply RIA URLs to the RIA stores that host the container dataset and
-# the input dataset. TODO: add "how to" in README
+# FIX-ME: Supply the name of container you have registered. (See README for more
+# information)
+# FIX-ME: Supply a path or URL to the place where your container dataset is
+# located, and a path or URL to the place where an input (super)dataset exists.
 #-------------------------------------------------------------------------------
-# define the location of the stores all analysis inputs will be obtained from
-container_store="ria+http://containers.ds.inm7.de"
-forrest="https://github.com/psychoinformatics-de/studyforrest-data-structural.git"
-#TODO: make the "ukb_raw_store" name generic
+containername='cat'
+container="ria+http://containers.ds.inm7.de#~cat"
+data="https://github.com/psychoinformatics-de/studyforrest-data-structural.git"
+
 #-------------------------------------------------------------------------------
-# FIX-ME: Replace "ukb_cat" with a dataset name of your choice.
+# FIX-ME: Replace this name with a dataset name of your choice.
 #-------------------------------------------------------------------------------
 source_ds="forrest_cat"
 
@@ -36,32 +40,30 @@ source_ds="forrest_cat"
 datalad create -c yoda $source_ds
 cd $source_ds
 
-#-------------------------------------------------------------------------------
-# FIX-ME: Replace '~cat' with an alias or dataset ID of your own container
-# dataset.
-#-------------------------------------------------------------------------------
-# register a container with the CAT tool
-datalad clone -d . "${container_store}#~cat" code/pipeline
+# clone the container-dataset as a subdataset. Please see README for
+# instructions how to create a container dataset.
+datalad clone -d . "${container}" code/pipeline
 
-# TODO: add a variable for the container name!
-
+# Register the container in the top-level dataset.
 #-------------------------------------------------------------------------------
-# FIX-ME: Configure your own container call in the --call-fmt argument.
-# {img} and {cmd} are standard placeholders and  will be replaced
-# with the container name and the command given in "datalad containers-run".
-# Curly brackets in any other parts of this configuration need to be escaped with
-# another curly bracket. Replace '~cat' with an alias or dataset ID of your own container
-# dataset.
-#-------------------------------------------------------------------------------
-# configure a custom container call to satisfy the needs of this analysis
+# FIX-ME: If necessary, configure your own container call in the --call-fmt
+# argument. If your container does not need a custom call format, remove the
+# --call-fmt flag and its options below.
 datalad containers-add \
   --call-fmt 'singularity exec -B {{pwd}} --cleanenv {img} {cmd}' \
-  -i code/pipeline/.datalad/environments/cat/image \
-  cat
-git commit --amend -m 'Register CAT pipeline dataset'
+  -i code/pipeline/.datalad/environments/${containername}/image \
+  $containername
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-# import necessary custom code, it will live in the dataset as its original
-# location
+# amend the previous commit with a nicer commit message
+git commit --amend -m 'Register pipeline dataset'
+
+# ------------------------------------------------------------------------------
+# FIX-ME: If you need custom scripts, copy them into the analysis source
+# dataset. If you don't need custom scripts, remove the copy and commit
+# operations below. (The scripts below are only relevant for CAT processing)
+# ------------------------------------------------------------------------------
+# import custom code for CAT
 cp /data/group/psyinf/ukb_workflow_template/finalize_job_outputs.sh code
 datalad save -m "Import script to tune the CAT outputs for storage"
 git commit --no-edit --amend --author "Małgorzata Wierzba <gosia.wierzba@gmail.com>"
@@ -69,20 +71,19 @@ cp /data/group/psyinf/ukb_workflow_template/code_cat_standalone_batchUKB.txt cod
 datalad save -m "Import desired CAT batch configuration"
 git commit --no-edit --amend --author "Felix Hoffstaedter <f.hoffstaedter@fz-juelich.de>"
 
-# create dedicated input and output locations
-datalad create-sibling-ria -s joc "${output_store}"
+
+# create dedicated input and output locations. Results will be pushed into the
+# output sibling, and the analysis will start with a clone from the input
+# sibling.
+datalad create-sibling-ria -s output "${output_store}"
 pushremote=$(git remote get-url --push joc)
 datalad create-sibling-ria -s input --storage-sibling off "${input_store}"
 
-# TODO: more generic sibling name
-#-------------------------------------------------------------------------------
-# FIX-ME: Replace '~bids' with an alias or dataset ID of your own input dataset.
-# FIX-ME: Replace "ukb" with a name of your choice
-#-------------------------------------------------------------------------------
-# register the UKB input dataset, a superdataset with 42k subdatasets
-# comprising all participants
-datalad clone -d . ${forrest} inputs/studyforrest
-git commit --amend -m 'Register studyforrest dataset in BIDS format as input'
+# register the input dataset
+datalad clone -d . ${data} inputs/data
+# amend the previous commit with a nicer commit message
+git commit --amend -m 'Register input data dataset as a subdataset'
+
 
 # the actual compute job specification
 # TODO: Replace references to analysis-specific stuff in commands (e.g., "ukb")
@@ -128,7 +129,13 @@ git checkout -b "job-$JOBID"
 # re-run we want to be able to do fine-grained recomputing of individual
 # outputs. The recorded calls will have specific paths that will enable
 # recomputation outside the scope of the original Condor setup
-datalad get -n "inputs/studyforrest/${subid}"
+datalad get -n "inputs/data/${subid}"
+
+# ------------------------------------------------------------------------------
+# FIX-ME: Replace the datalad containers-run command starting below with a
+# command that fits your analysis. (Note that the command for CAT processing is
+# quite complex and involves separate scripts - if you are not using CAT
+# processing, remove everything until \; )
 
 # the meat of the matter
 # look for T1w files in the input data for the given participant
@@ -136,7 +143,7 @@ datalad get -n "inputs/studyforrest/${subid}"
 # `containers-run` does not rely on any property of the immediate
 # computational environment (env vars, services, etc)
 find \
-  inputs/studyforrest/${subid} \
+  inputs/data/${subid} \
   -name '*T1w.nii.gz' \
   -exec sh -c '
     odir=$(echo {} | cut -d / -f3-4);
@@ -159,13 +166,15 @@ find \
         " \
   ' \;
 
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 # it may be that the above command did not yield any outputs
 # and no commit was made (no T1s found for the given participant)
 # we nevertheless push the branch to have a record that this was
 # attempted and did not fail
 
 # file content first -- does not need a lock, no interaction with Git
-datalad push --to joc-storage
+datalad push --to output-storage
 # and the output branch
 flock --verbose $DSLOCKFILE git push outputstore
 
@@ -180,12 +189,16 @@ datalad save -m "Participant compute job implementation"
 mkdir logs
 echo logs >> .gitignore
 echo dag_tmp >> .gitignore
-# TODO: explain lock file in README
 echo .condor_datalad_lock >> .gitignore
+
+## define ID for git commits (take from local user configuration)
+git_name="$(git config user.name)"
+git_email="$(git config user.email)"
 
 #-------------------------------------------------------------------------------
 # FIX-ME: Adjust job requirements to your needs
 #-------------------------------------------------------------------------------
+
 # TODO: Think about clone candidate sources
 # compute environment for a single job
 cat > code/process.condor_submit << EOT
@@ -195,7 +208,7 @@ request_cpus   = 1
 request_memory = 4G
 request_disk   = 5G
 
-# tell condor that a job es self contained and the executable
+# tell condor that a job is self contained and the executable
 # is enough to bootstrap the computation on the execute node
 should_transfer_files = yes
 # explicitly do not transfer anything back
@@ -241,15 +254,17 @@ arguments = "\\
   "
 queue
 EOT
-# TODO: How to not hardcode the ria URLs for source and output dataset.
 
-
-# TODO: make this more generic, provide explanation
+# ------------------------------------------------------------------------------
+# FIX-ME: Adjust the find command below to return the unit over which your
+# analysis should parallelize. Here, subject directories on the first hierarchy
+# level in the input data are returned by searching for the 'sub-*' prefix.
+# ------------------------------------------------------------------------------
 # processing graph specification for computing all jobs
 cat > code/process.condor_dag << "EOT"
 # Processing DAG
 EOT
-for s in $(find inputs/studyforrest -maxdepth 1 -type d -name 'sub-*' -printf '%f\n'); do
+for s in $(find inputs/data -maxdepth 1 -type d -name 'sub-*' -printf '%f\n'); do
   s=${s:4}
   printf "JOB sub-$s code/process.condor_submit\nVARS sub-$s subject=\"$s\"\n" >> code/process.condor_dag
 done
@@ -261,14 +276,12 @@ datalad save -m "HTCondor submission setup" code/ .gitignore
 # around
 # having it around wastes resources and makes many git operations needlessly
 # slow
-datalad uninstall -r --nocheck inputs/studyforrest
+datalad uninstall -r --nocheck inputs/data
 
 # make sure the fully configured output dataset is available from the designated
-# store
-# juseless-output-collector (joc)
-# TODO: make this generic, more explanation
+# store for initial cloning and pushing the results.
 datalad push --to input
-datalad push --to joc
+datalad push --to output
 
 # if we get here, we are happy
 echo SUCCESS
