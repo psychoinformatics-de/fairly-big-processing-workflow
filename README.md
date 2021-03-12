@@ -123,7 +123,7 @@ $ git show-ref master | cut -d ' ' -f1
 46faaa8e42a5ae1a1915d4772550ca98ff837f5d
 # query all branches for the most recent commit and check if it is identical.
 # Write all branch identifiers for jobs without outputs into a file.
-% for i in $(git branch | grep job- | sort); do [ x"$(git show-ref $i \
+$ for i in $(git branch | grep job- | sort); do [ x"$(git show-ref $i \
   | cut -d ' ' -f1)" = x"46faaa8e42a5ae1a1915d4772550ca98ff837f5d" ] && \
   echo $i; done | tee /tmp/nores.txt | wc -l
 ```
@@ -165,6 +165,45 @@ into the RIA store with Git.
 ```
 git push
 ```
+
+### Restoring file availability info
+
+After merging result branches, we need to query the datastore special remote for
+file availability.
+This information was specifically "lost" in the compute jobs, in order to avoid
+the implied synchronization problem across compute jobs, and to boost throughput.
+Run the following command to restore it:
+
+```
+$ git annex fsck --fast -f output-storage
+```
+
+Sanity check that we have a file content location on record for every annexed
+file by checking that the following command does not have any outputs:
+
+```
+$ git annex find --not --in output-storage
+```
+
+This will update the ``git-annex`` branch and all file contents retrievable via
+datalad get.
+We advise to declare the local clone dead, in order to avoid this temporary
+working copy to get on record in all future clones:
+
+```
+$ git annex dead here
+```
+
+Finally, write back to the datastore:
+
+
+```
+$ datalad push --data nothing
+```
+
+At this point, the dataset can be cloned from the datastore, and its file
+contents can be retrieved via ``datalad get``. A recomputation can be done on a
+per-file level with ``datalad rerun``.
 
 ### Software requirements
 
