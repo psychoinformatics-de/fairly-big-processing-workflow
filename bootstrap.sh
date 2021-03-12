@@ -147,30 +147,49 @@ request_cpus   = 1
 request_memory = 4G
 request_disk   = 5G
 
+# tell condor that a job es self contained and the executable
+# is enough to bootstrap the computation on the execute node
 should_transfer_files = yes
 # explicitly do not transfer anything back
 # we are using datalad for everything that matters
 transfer_output_files = ""
 
-executable     = \$ENV(PWD)/code/participant_job
+# the actual job script, nothing condor-specific in it
+executable     = $ENV(PWD)/code/participant_job
 
 # the job expects these environment variables for labeling and synchronization
-environment = "\\
-  JOBID=\$(subject).\$(Cluster) \\
-  DSLOCKFILE=\$ENV(PWD)/.condor_datalad_lock \\
-  DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__100ukb='${ukb_raw_store}#{id}' \\
-  DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__101cat='${container_store}#{id}' \\
-  GIT_AUTHOR_NAME='${git_name}' \\
-  GIT_AUTHOR_EMAIL='${git_email}' \\
+# - JOBID: subject AND process specific ID to make a branch name from
+#     (must be unique across all (even multiple) submissions)
+#     including the cluster ID will enable sorting multiple computing attempts
+# - DSLOCKFILE: lock (must be accessible from all compute jobs) to synchronize
+#     write access to the output dataset
+# - DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__...:
+#     (additional) locations for datalad to locate relevant subdatasets, in case
+#     a configured URL is outdated
+# - GIT_AUTHOR_...: Identity information used to save dataset changes in compute
+#     jobs
+environment = "\
+  JOBID=$(subject).$(Cluster) \
+  DSLOCKFILE=$ENV(PWD)/.condor_datalad_lock \
+  DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__100ukb='ria+http://ukb.ds.inm7.de#{id}' \
+  DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__101cat='ria+http://containers.ds.inm7.de#{id}' \
+  GIT_AUTHOR_NAME='Michael Hanke' \
+  GIT_AUTHOR_EMAIL='michael.hanke@gmail.com' \
   "
 
-log    = \$ENV(PWD)/logs/\$(subject)_\$(Cluster).log
-output = \$ENV(PWD)/logs/\$(subject)_\$(Cluster).out
-error  = \$ENV(PWD)/logs/\$(subject)_\$(Cluster).err
-arguments = "\\
-  ${output_store} \\
-  $(datalad -f '{infos[dataset][id]}' wtf -S dataset) \\
-  sub-\$(subject) \\
+# place the job logs into PWD/logs, using the same name as for the result branches
+# (JOBID)
+log    = $ENV(PWD)/logs/$(subject)_$(Cluster).log
+output = $ENV(PWD)/logs/$(subject)_$(Cluster).out
+error  = $ENV(PWD)/logs/$(subject)_$(Cluster).err
+# essential args for `participant_job`
+# 1: where to clone the analysis dataset
+# 2: location to push the result git branch to
+# 3: ID of the subject to process
+arguments = "\
+  ria+file:///data/project/ukb_vbm/inputstore#8938de76-0302-45b5-9825-3c6ce3f3fffe \
+  file:///data/project/ukb_vbm/outputstore/893/8de76-0302-45b5-9825-3c6ce3f3fffe \
+  sub-$(subject) \
   "
 queue
 EOT
