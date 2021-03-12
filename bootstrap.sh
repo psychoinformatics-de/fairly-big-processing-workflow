@@ -14,7 +14,7 @@ git_email="$(git config user.email)"
 # RIA store will be created if it doesn't yet exist.
 #-------------------------------------------------------------------------------
 # define the dataset store all output will go to
-output_store="ria+file:///data/project/ukb_vbm/outputstore"
+output_store="ria+file:///data/group/psyinf/forrestoutput"
 
 # ------------------------------------------------------------------------------
 # FIX-ME: Supply RIA URLs to the RIA stores that host the container dataset and
@@ -22,16 +22,17 @@ output_store="ria+file:///data/project/ukb_vbm/outputstore"
 #-------------------------------------------------------------------------------
 # define the location of the stores all analysis inputs will be obtained from
 container_store="ria+http://containers.ds.inm7.de"
-ukb_raw_store="ria+http://ukb.ds.inm7.de"
+forrest="https://github.com/psychoinformatics-de/studyforrest-data-structural.git"
 #TODO: make the "ukb_raw_store" name generic
 #-------------------------------------------------------------------------------
 # FIX-ME: Replace "ukb_cat" with a dataset name of your choice.
 #-------------------------------------------------------------------------------
-source_ds="ukb_cat"
+source_ds="forrest_cat"
 
 # Create a source dataset with all analysis components as an analysis access
 # point. Job submission will take place from a checkout of this dataset, but no
-# results will be pushed into itdatalad create -c yoda $source_ds
+# results will be pushed into it
+datalad create -c yoda $source_ds
 cd $source_ds
 
 #-------------------------------------------------------------------------------
@@ -60,10 +61,10 @@ git commit --amend -m 'Register CAT pipeline dataset'
 
 # import necessary custom code, it will live in the dataset as its original
 # location
-cp /data/project/ukb_vbm/finalize_job_outputs.sh code
+cp /data/group/psyinf/ukb_workflow_template/finalize_job_outputs.sh code
 datalad save -m "Import script to tune the CAT outputs for storage"
 git commit --no-edit --amend --author "Małgorzata Wierzba <gosia.wierzba@gmail.com>"
-cp /data/project/ukb_vbm/code_cat_standalone_batchUKB.txt code/cat_standalone_batch.txt
+cp /data/group/psyinf/ukb_workflow_template/code_cat_standalone_batchUKB.txt code/cat_standalone_batch.txt
 datalad save -m "Import desired CAT batch configuration"
 git commit --no-edit --amend --author "Felix Hoffstaedter <f.hoffstaedter@fz-juelich.de>"
 
@@ -74,8 +75,8 @@ git commit --no-edit --amend --author "Felix Hoffstaedter <f.hoffstaedter@fz-jue
 #-------------------------------------------------------------------------------
 # register the UKB input dataset, a superdataset with 42k subdatasets
 # comprising all participants
-datalad clone -d . "${ukb_raw_store}#~bids" inputs/ukb
-git commit --amend -m 'Register UKB raw dataset in BIDS format as input'
+datalad clone -d . ${forrest} inputs/studyforrest
+git commit --amend -m 'Register studyforrest dataset in BIDS format as input'
 
 # the actual compute job specification
 # TODO: Replace references to analysis-specific stuff in commands (e.g., "ukb")
@@ -121,7 +122,7 @@ git checkout -b "job-$JOBID"
 # re-run we want to be able to do fine-grained recomputing of individual
 # outputs. The recorded calls will have specific paths that will enable
 # recomputation outside the scope of the original Condor setup
-datalad get -n "inputs/ukb/${subid}"
+datalad get -n "inputs/studyforrest/${subid}"
 
 # the meat of the matter
 # look for T1w files in the input data for the given participant
@@ -129,7 +130,7 @@ datalad get -n "inputs/ukb/${subid}"
 # `containers-run` does not rely on any property of the immediate
 # computational environment (env vars, services, etc)
 find \
-  inputs/ukb/${subid} \
+  inputs/studyforrest/${subid} \
   -name '*T1w.nii.gz' \
   -exec sh -c '
     odir=$(echo {} | cut -d / -f3-4);
@@ -212,7 +213,7 @@ executable     = $ENV(PWD)/code/participant_job
 environment = "\
   JOBID=$(subject).$(Cluster) \
   DSLOCKFILE=$ENV(PWD)/.condor_datalad_lock \
-  DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__100ukb='ria+http://ukb.ds.inm7.de#{id}' \
+#  DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__100ukb='ria+http://ukb.ds.inm7.de#{id}' \
   DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__101cat='ria+http://containers.ds.inm7.de#{id}' \
   GIT_AUTHOR_NAME='Michael Hanke' \
   GIT_AUTHOR_EMAIL='michael.hanke@gmail.com' \
@@ -234,12 +235,15 @@ arguments = "\
   "
 queue
 EOT
+# TODO: How to not hardcode the ria URLs for source and output dataset.
+
+
 # TODO: make this more generic, provide explanation
 # processing graph specification for computing all jobs
 cat > code/process.condor_dag << "EOT"
 # Processing DAG
 EOT
-for s in $(find inputs/ukb -maxdepth 1 -type d -name 'sub-*' -printf '%f\n'); do
+for s in $(find inputs/studyforrest -maxdepth 1 -type d -name 'sub-*' -printf '%f\n'); do
   s=${s:4}
   printf "JOB sub-$s code/process.condor_submit\nVARS sub-$s subject=\"$s\"\n" >> code/process.condor_dag
 done
@@ -251,7 +255,7 @@ datalad save -m "HTCondor submission setup" code/ .gitignore
 # around
 # having it around wastes resources and makes many git operations needlessly
 # slow
-datalad uninstall -r --nocheck inputs/ukb
+datalad uninstall -r --nocheck inputs/studyforrest
 
 # make sure the fully configured output dataset is available from the designated
 # store
