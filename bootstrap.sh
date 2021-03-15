@@ -1,42 +1,43 @@
 set -e -u
 
-#
-#                      HOW TO USE
-#
-# Please adjust every variable with a "FIX-ME" comment on top.
-
+###############################################################################
+#                               HOW TO USE                                    #
+#                                                                             #
+#       Please adjust every variable within a "FIX-ME" markup to your         #
+#       filesystem, data, and software container.                             #
+#       Depending on which job scheduling system you use, comment out         #
+#       or remove the irrelevant system.                                      #
+###############################################################################
 
 
 # Jobs are set up to not require a shared filesystem (except for the lockfile)
 # ------------------------------------------------------------------------------
 # FIX-ME: Supply a RIA-URL to a RIA store that will collect all outputs, and a
 # RIA-URL to a different RIA store from which the dataset will be cloned from.
-# Both RIA stores will be created if it doesn't yet exist.
-# Note: 'input_store' can be removed after processing has finished. It exists in
-# order to be a safe and non-changing place from where the analysis source
-# dataset is cloned from.
-#-------------------------------------------------------------------------------
+# Both RIA stores will be created if they don't yet exist.
 output_store="ria+file:///data/group/psyinf/forrestoutput"
 input_store="ria+file:///data/group/psyinf/forrestinput"
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 
 # ------------------------------------------------------------------------------
-# FIX-ME: Supply the name of container you have registered. (See README for more
-# information)
+# FIX-ME: Supply the name of container you have registered (see README for info)
 # FIX-ME: Supply a path or URL to the place where your container dataset is
 # located, and a path or URL to the place where an input (super)dataset exists.
-#-------------------------------------------------------------------------------
 containername='cat'
 container="ria+http://containers.ds.inm7.de#~cat"
 data="https://github.com/psychoinformatics-de/studyforrest-data-structural.git"
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 
 #-------------------------------------------------------------------------------
 # FIX-ME: Replace this name with a dataset name of your choice.
-#-------------------------------------------------------------------------------
 source_ds="forrest_cat"
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 
 # Create a source dataset with all analysis components as an analysis access
-# point. Job submission will take place from a checkout of this dataset, but no
-# results will be pushed into it
+# point.
 datalad create -c yoda $source_ds
 cd $source_ds
 
@@ -55,26 +56,27 @@ datalad containers-add \
   $containername
 #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+
 # amend the previous commit with a nicer commit message
 git commit --amend -m 'Register pipeline dataset'
 
+
+# import custom code
 # ------------------------------------------------------------------------------
 # FIX-ME: If you need custom scripts, copy them into the analysis source
 # dataset. If you don't need custom scripts, remove the copy and commit
 # operations below. (The scripts below are only relevant for CAT processing)
-# ------------------------------------------------------------------------------
-# import custom code for CAT
 cp /data/group/psyinf/ukb_workflow_template/finalize_job_outputs.sh code
 datalad save -m "Import script to tune the CAT outputs for storage"
 git commit --no-edit --amend --author "Małgorzata Wierzba <gosia.wierzba@gmail.com>"
 cp /data/group/psyinf/ukb_workflow_template/code_cat_standalone_batchUKB.txt code/cat_standalone_batch.txt
 datalad save -m "Import desired CAT batch configuration"
 git commit --no-edit --amend --author "Felix Hoffstaedter <f.hoffstaedter@fz-juelich.de>"
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
 # create dedicated input and output locations. Results will be pushed into the
-# output sibling, and the analysis will start with a clone from the input
-# sibling.
+# output sibling and the analysis will start with a clone from the input sibling.
 datalad create-sibling-ria -s output "${output_store}"
 pushremote=$(git remote get-url --push output)
 datalad create-sibling-ria -s input --storage-sibling off "${input_store}"
@@ -86,9 +88,6 @@ git commit --amend -m 'Register input data dataset as a subdataset'
 
 
 # the actual compute job specification
-# TODO: Replace references to analysis-specific stuff in commands (e.g., "ukb")
-# TODO: make "joc" more generic, explain that "joc-storage" will be setup
-# automatically
 cat > code/participant_job << "EOT"
 #!/bin/bash
 
@@ -184,10 +183,15 @@ EOT
 chmod +x code/participant_job
 datalad save -m "Participant compute job implementation"
 
-# HTCondor compute setup
-# the workspace is to be ignored by git
 mkdir logs
 echo logs >> .gitignore
+
+###############################################################################
+# HTCONDOR SETUP START - remove or adjust this according to your needs.
+###############################################################################
+
+# HTCondor compute setup
+# the workspace is to be ignored by git
 echo dag_tmp >> .gitignore
 echo .condor_datalad_lock >> .gitignore
 
@@ -195,12 +199,10 @@ echo .condor_datalad_lock >> .gitignore
 git_name="$(git config user.name)"
 git_email="$(git config user.email)"
 
+# compute environment for a single job
 #-------------------------------------------------------------------------------
 # FIX-ME: Adjust job requirements to your needs
-#-------------------------------------------------------------------------------
 
-# TODO: Think about clone candidate sources
-# compute environment for a single job
 cat > code/process.condor_submit << EOT
 universe       = vanilla
 # resource requirements for each job
@@ -232,7 +234,6 @@ executable     = \$ENV(PWD)/code/participant_job
 environment = "\\
   JOBID=\$(subject).\$(Cluster) \\
   DSLOCKFILE=\$ENV(PWD)/.condor_datalad_lock \\
-#  DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__100ukb='ria+http://ukb.ds.inm7.de#{id}' \
   DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__101cat='ria+http://containers.ds.inm7.de#{id}' \\
   GIT_AUTHOR_NAME='${git_name}' \\
   GIT_AUTHOR_EMAIL='${git_email}' \\
@@ -259,6 +260,7 @@ EOT
 # FIX-ME: Adjust the find command below to return the unit over which your
 # analysis should parallelize. Here, subject directories on the first hierarchy
 # level in the input data are returned by searching for the 'sub-*' prefix.
+# The setup below creates an HTCondor DAG.
 # ------------------------------------------------------------------------------
 # processing graph specification for computing all jobs
 cat > code/process.condor_dag << "EOT"
@@ -268,14 +270,108 @@ for s in $(find inputs/data -maxdepth 1 -type d -name 'sub-*' -printf '%f\n'); d
   s=${s:4}
   printf "JOB sub-$s code/process.condor_submit\nVARS sub-$s subject=\"$s\"\n" >> code/process.condor_dag
 done
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 datalad save -m "HTCondor submission setup" code/ .gitignore
 
+################################################################################
+# HTCONDOR SETUP END
+################################################################################
 
-# cleanup
-# we have generated the DAG, we do not need to keep the massive input dataset
-# around
-# having it around wastes resources and makes many git operations needlessly
-# slow
+
+################################################################################
+# SLURM SETUP START - remove or adjust to your needs
+################################################################################
+
+echo .SLURM_datalad_lock >> .gitignore
+
+# SLURM compute environment
+# makes sure that the jobs per node don't exceed RAM and wall clock time !!
+cat > code/process.sbatch << "EOT"
+#!/bin/bash -x
+#SBATCH --account=jinm72
+#SBATCH --mail-user=FIXME
+#SBATCH --mail-type=END
+#SBATCH --job-name=FIXME
+#SBATCH --output=logs/processing-out.%j
+#SBATCH --error=logs/processing-err.%j
+#SBATCH --time=24:00:00
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=256
+#SBATCH --partition=dc-cpu-bigmem
+#SBATCH --nodes=1
+
+srun parallel --delay 0.2  -a code/aomic_cat.jobs --use-cpus-instead-of-cores
+
+wait
+EOT
+
+
+
+# create job.call-file for all commands to call
+# each subject is processed on RAMDISK in an own dataset
+fastdata=/dev/shm/
+
+cat > code/call.cat << EOT
+#!/bin/bash -x
+#
+# redundant input per subject
+
+subid=\$1
+
+# define DSLOCKFILE, DATALAD & GIT ENV for participant_job
+export DSLOCKFILE=$(pwd)/.SLURM_datalad_lock \
+DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__100aomic=${input_store}#{id} \
+DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__101cat=${container_store}#{id} \
+GIT_AUTHOR_NAME=\$(git config user.name) \
+GIT_AUTHOR_EMAIL=\$(git config user.email) \
+JOBID=\${subid:4}.\${SLURM_JOB_ID} \
+
+# use subject specific folder
+mkdir $fastdata\${subid}
+cd $fastdata\${subid}
+
+# run things
+$(pwd)/code/participant_job \
+${input_store}#$(datalad -f '{infos[dataset][id]}' wtf -S dataset) \
+$(git remote get-url --push juroc) \
+\${subid} \
+>$(pwd)/logs/\${JOBID}.out \
+2>$(pwd)/logs/\${JOBID}.err
+
+EOT
+
+chmod +x code/call.cat
+
+# create job-file with commands for all jobs
+cat > code/aomic_cat.jobs << "EOT"
+#!/bin/bash
+EOT
+
+# ------------------------------------------------------------------------------
+# FIX-ME: Adjust the find command below to return the unit over which your
+# analysis should parallelize. Here, subject directories on the first hierarchy
+# level in the input data are returned by searching for the 'sub-*' prefix.
+#
+for s in $(find inputs/aomic/ -maxdepth 1 -type d -name 'sub-*' -printf '%f\n'); do
+  printf "code/call.cat $s\n" >> code/aomic_cat.jobs
+done
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+chmod +x code/aomic_cat.jobs
+datalad save -m "SLURM submission setup" code/ .gitignore
+
+################################################################################
+# SLURM SETUP END
+################################################################################
+
+
+
+
+
+# cleanup - we have generated the job definitions, we do not need to keep a
+# massive input dataset around. Having it around wastes resources and makes many
+# git operations needlessly slow
 datalad uninstall -r --nocheck inputs/data
 
 # make sure the fully configured output dataset is available from the designated
