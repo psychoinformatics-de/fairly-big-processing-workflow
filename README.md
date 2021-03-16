@@ -27,6 +27,14 @@ This repository contains the following files:
   requirements are met.
 
 
+# Table of contens
+
+<!--ts-->
+* [Software requirements](#software-requirements)
+* [Workflow overview](#workflow-overview)
+
+<!--te-->
+
 ## Software requirements
 
 The machines involved in your workflow need the following software:
