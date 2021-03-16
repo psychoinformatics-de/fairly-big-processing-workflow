@@ -20,23 +20,102 @@ This repository contains the following files:
   [Wierzba et al., 2021]()
 - ``finalize_job_outputs``: A script that wraps up CAT processing outputs into
   tarballs
-- Singularity: The original Singularity recipe for the computational anatomy
-  toolbox (CAT) for SPM (Glaser & Dahnke) container. Building the container
-  requires MATLAB, TODO ...
-  You can build the container by running:
+- ``bootstrap_test.sh``: A self-contained example analysis with HTCondor with
+  openly shared structural MRI data from the Studyforrest project and a
+  structural pipeline. It requires minimal adjustments of file paths to your
+  filesystem, and can be ran as a quick example provided the software
+  requirements are met.
 
-```
-TODO
-```
+
+## Software requirements
+
+The machines involved in your workflow need the following software:
+
+- [datalad](https://www.datalad.org/) and its dependencies (Installation
+  instructions are at [handbook.datalad.org](http://handbook.datalad.org/en/latest/intro/installation.html#install)).
+  Make sure that you have recent versions of DataLad, git-annex, and Git.
+- [Singularity](https://sylabs.io/docs/)
+- The Unix tool [flock](https://linux.die.net/man/1/flock) for file locking
+- optional: A job scheduling/batch processing tool such as [HTCondor](https://research.cs.wisc.edu/htcondor/) or
+  [SLURM](https://slurm.schedmd.com/documentation.html)
+
+
+## Workflow overview
+
+![](https://github.com/datalad-handbook/artwork/blob/master/src/ukbworkflow.svg)
+
+TODO: include step-wise workflow
+
+
+
+
+
+
+
 
 
 ## Reproduce the analysis in Wierzba et al. (2021)
+
+We have used the workflow to process UK Biobank data with the computational
+anatomy toolbox (CAT) for SPM.
+While we are not able to share the data or container image due to data usage and
+software license restrictions, we share everything that is relevant to create
+these workflow components.
+
+### Software container
+
+The Singularity recipe and documentation on how to build a container Image from
+it and use it can be found at
+[github.com/m-wierzba/cat-container](https://github.com/m-wierzba/cat-container).
+
+#### Transform the software container into a dataset
+
+TODO
+
+### UK Biobank data
+
+Assuming you have [successfully registered for UK Biobank data and have been
+approved](https://www.ukbiobank.ac.uk/enable-your-research/register), you can
+use the DataLad extension
+[datalad-ukbiobank](https://github.com/datalad/datalad-ukbiobank) to transform
+UK Biobank data into a BIDS-like structured dataset. The extension can be used
+when no data has yet been retrieved, but also when data tarballs have already
+been downloaded to local infrastructure.
+
+### Adjust and run the bootstrapping script
+
+``bootstrap.sh`` sets up the complete analysis set up (relevant input and output
+RIA stores, participant-wise jobs, job submission setup for HTCondor or SLURM)
+automatically, but it requires adjustments to your paths and workflows.
+Within the script, a ``FIX-ME`` markup indicates where adjustments may be
+necessary.
+We recommend to open the file in a text reader of your choice and work through
+the document using a find command to catch all FIX-ME's.
+
+Afterwards, run the script:
+
+```
+bash bootstrap.sh
+```
+
+If you can see the word "SUCCESS" at the end of the log messages in prints to
+your terminal and no suspicuous errors/warning, set up completed successfully.
+It will have created a DataLad dataset underneath your current working
+directory, by default under the name TODO.
+
+Navigate into this directory, and submit the compute jobs with the job
+scheduling setup you have chosen in ``bootstrap.sh``.
+
+
+
+
+
 
 
 
 ## Adjust the workflow for your own needs
 
-
+You can adjust the workflow to other datasets, systems, and pipelines.
 The workflow is tuned towards analyses that operate on a per participant level
 on input data 
 
@@ -205,11 +284,53 @@ At this point, the dataset can be cloned from the datastore, and its file
 contents can be retrieved via ``datalad get``. A recomputation can be done on a
 per-file level with ``datalad rerun``.
 
-### Software requirements
+## Testing your setup
 
-TODO: add software requirements
-TODO: explain file locking
+We advise to test the setup with a handful of jobs before scaling up. In order
+to do this:
+
+- Submit a few jobs
+- Make sure they finish successfully and check the logs carefully for any
+  problems
+- Clone the output dataset and check if all required branches are present
+- Attempt a merge
+- restore file availability information
+- attempt a rerun
+
+
+### Common problems and how to fix them
+
+**Protocol mismatches**
+RIA URLs specify a protocol, such as ``ria+file://``, ``ria+http://``, or
+``ria+ssh``. If this protocol doesn't match the required access protocol (for
+example because you created the RIA input or output store with a ``ria+file://``
+URL but computations run on another server an need a ``ria+ssh://`` URL), you
+will need to reconfigure. This can be done with an environment variable
+``DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__101<name>=<correct url>``. You can
+find an example in the bootstrap file and more information in
+[handbook.datalad.org/r.html?clone-priority](handbook.datalad.org/en/latest/r.html?clone-priority).
+
+**Heavy Git Object stores**
+With many thousand jobs, the object store of the resulting dataset can
+accumulate substantial clutter. This can be reduced by running ``git gc`` from
+time to time.
+
+
+### Frequently asked questions
+
+**What is filelocking and what do I need to do?**
+File locking is used as the last step in any computation during the final "git
+push" operation. It prevents that more than one process push their results at
+the same time by holding a single shared lockfile for the duration of the
+process, and only starting the process when the lockfile is free.
+You will not need to create, remove, or care about the lockfile, the setup in
+``bootstrap.sh`` suffices.
+
 
 ### Further workflow adjustments
 
-The framework and its underlying tools are versatile and flexible.
+The framework and its underlying tools are versatile and flexible. When
+adjusting the workflow to other scenarios please make sure that no two jobs
+write results to the same file, unless you are prepared to handle resulting
+merge conflicts. An examples on how to fix simple merge conflicts is at
+[handbook.datalad.org/beyond_basics/101-171-enki.html#merging-results](http://handbook.datalad.org/en/latest/beyond_basics/101-171-enki.html#merging-results).

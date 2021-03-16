@@ -7,6 +7,8 @@ set -e -u
 #       filesystem, data, and software container.                             #
 #       Depending on which job scheduling system you use, comment out         #
 #       or remove the irrelevant system.                                      #
+#       More information about this script can be found in the README.        #
+#                                                                             #
 ###############################################################################
 
 
