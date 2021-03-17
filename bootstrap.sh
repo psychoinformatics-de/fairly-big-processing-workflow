@@ -324,7 +324,7 @@ subid=\$1
 # define DSLOCKFILE, DATALAD & GIT ENV for participant_job
 export DSLOCKFILE=$(pwd)/.SLURM_datalad_lock \
 DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__100aomic=${input_store}#{id} \
-DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__101cat=${container_store}#{id} \
+DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__101cat=${container}#{id} \
 GIT_AUTHOR_NAME=\$(git config user.name) \
 GIT_AUTHOR_EMAIL=\$(git config user.email) \
 JOBID=\${subid:4}.\${SLURM_JOB_ID} \
@@ -336,7 +336,7 @@ cd $fastdata\${subid}
 # run things
 $(pwd)/code/participant_job \
 ${input_store}#$(datalad -f '{infos[dataset][id]}' wtf -S dataset) \
-$(git remote get-url --push juroc) \
+$(git remote get-url --push output) \
 \${subid} \
 >$(pwd)/logs/\${JOBID}.out \
 2>$(pwd)/logs/\${JOBID}.err
