@@ -149,7 +149,7 @@ job branch has a new commit on top of the reference commit the analysis started
 from.
 
 ```
-for i in $(git branch | grep job- | sort); do [ x"$(git show-ref $i \
+for i in $(git branch -a | grep job- | sort); do [ x"$(git show-ref $i \
   | cut -d ' ' -f1)" = x"609e5395596b9fbc8534f9c175dbf95d631c633c" ]  && \
   echo $i; done | tee /tmp/nores.txt | wc -l
 0
