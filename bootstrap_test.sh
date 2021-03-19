@@ -169,7 +169,7 @@ datalad containers-run \
    -o fmriprep/${subid} \
    -i inputs/data/${subid}/anat/ \
    -i code/license.txt \
-    "${PWD}/inputs/data . participant --participant-label $subid --anat-only -w .git/tmp/wdir --fs-no-reconall --skip-bids-validation --fs-license-file {inputs[1]}"
+    "inputs/data . participant --participant-label $subid --anat-only -w .git/tmp/wdir --fs-no-reconall --skip-bids-validation --fs-license-file {inputs[1]}"
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 # it may be that the above command did not yield any outputs
