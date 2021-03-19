@@ -138,14 +138,6 @@ mkdir -p .git/tmp/wdir
 # the participant we want to process in this job
 find inputs/data -mindepth 2 -name '*.json' -a ! -wholename "$3"'*T*w*' -delete
 
-# next one is important to get job-reruns correct. We remove all anticipated
-# output, such that fmriprep isn't confused by the presence of stale
-# symlinks. Otherwise we would need to obtain and unlock file content.
-# But that takes some time, for no reason other than being discarded
-# at the end
-( if [ -d fmriprep ] ; then rm -rf logs "$subid" "$subid.html" dataset_description.json desc-*.tsv; fi)
-
-
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
