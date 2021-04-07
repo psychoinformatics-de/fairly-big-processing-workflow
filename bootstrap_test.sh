@@ -70,6 +70,8 @@ git commit --amend -m 'Register pipeline dataset'
 # operations below. (The scripts below are only relevant for CAT processing)
 cp ~/license.txt code/license.txt
 datalad save -m "Add Freesurfer license file"
+cp ../runfmriprep.sh code/runfmriprep.sh
+datalad save -m "Add fmriprep job script"
 #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
@@ -132,11 +134,11 @@ datalad get -n "inputs/data/${subid}"
 # FMRIPREP SPECIFIC ADJUSTMENTS - NOT NECESSARY FOR OTHER PIPELINES
 # create workdir for fmriprep inside to simplify singularity call
 # PWD will be available in the container
-mkdir -p .git/tmp/wdir
+# mkdir -p .git/tmp/wdir
 # pybids (inside fmriprep) gets angry when it sees dangling symlinks
 # of .json files -- wipe them out, spare only those that belong to
 # the participant we want to process in this job
-find inputs/data -mindepth 2 -name '*.json' -a ! -wholename "$3"'*T*w*' -delete
+# find inputs/data -mindepth 2 -name '*.json' -a ! -wholename "$3"'*T*w*' -delete
 
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -149,19 +151,20 @@ find inputs/data -mindepth 2 -name '*.json' -a ! -wholename "$3"'*T*w*' -delete
 # quite complex and involves separate scripts - if you are not using CAT
 # processing, remove everything until \; )
 
-# the meat of the matter
-# look for T1w files in the input data for the given participant
-# it is critical for reproducibility that the command given to
-# `containers-run` does not rely on any property of the immediate
-# computational environment (env vars, services, etc)
+# the meat of the matter is the datalad containers-run call, but in an initial
+# find command we first remove all json files that are unrelated to the
+# participant that is being processed (see
+# https://github.com/bids-standard/pybids/issues/631 for the bug report), else
+# a recomputation will fail.
 datalad containers-run \
-   -m "Compute ${subid}" \
-   -n bids-fmriprep \
-   --explicit \
-   -o fmriprep/${subid} \
-   -i inputs/data/${subid}/anat/ \
-   -i code/license.txt \
-    "inputs/data . participant --participant-label $subid --anat-only -w .git/tmp/wdir --fs-no-reconall --skip-bids-validation --fs-license-file {inputs[1]}"
+  -m "Compute ${subid}" \
+  -n bids-fmriprep \
+  --explicit \
+  -o fmriprep/${subid} \
+  -i inputs/data/${subid}/anat/ \
+  -i code/license.txt \
+  "sh code/runfmriprep.sh $subid"
+
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 # it may be that the above command did not yield any outputs
