@@ -14,7 +14,7 @@ find inputs/data -mindepth 2 -name '*.json' -a ! -wholename "$subid" -exec gzip 
 
 # execute fmriprep. Its runscript is available as /singularity within the
 # container
-/singularity -b inputs/data . participant --participant-label $subid \
+/singularity inputs/data . participant --participant-label $subid \
     --anat-only -w .git/tmp/wdir --fs-no-reconall --skip-bids-validation \
     --fs-license-file code/license.txt
 
