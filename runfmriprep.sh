@@ -10,7 +10,7 @@ mkdir -p .git/tmp/wdir
 # of .json files -- wipe them out by temporarily placing them in a zip archive,
 # spare only those that belong to the participant we want to process in this job
 # After job completion, the jsons will be restored
-find inputs/data -mindepth 2 -name '*.json' -a ! -wholename "$subid" -exec gzip {} +
+find inputs/data -mindepth 2 -name '*.json' -a ! -wholename "$subid" -exec gzip -f {} +
 
 # execute fmriprep. Its runscript is available as /singularity within the
 # container
