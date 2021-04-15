@@ -53,7 +53,7 @@ datalad clone -d . "${container}" code/pipeline
 # argument. If your container does not need a custom call format, remove the
 # --call-fmt flag and its options below.
 datalad containers-add \
-  --call-fmt 'singularity run -B {{pwd}} --cleanenv {img} {cmd}' \
+  --call-fmt 'singularity exec -B {{pwd}} --cleanenv {img} {cmd}' \
   -i code/pipeline/images/bids/bids-fmriprep--20.2.0.sing \
   $containername
 #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
