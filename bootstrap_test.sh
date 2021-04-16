@@ -188,14 +188,10 @@ datalad containers-run \
 
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-# it may be that the above command did not yield any outputs
-# and no commit was made (no T1s found for the given participant)
-# we nevertheless push the branch to have a record that this was
-# attempted and did not fail
 
-# file content first -- does not need a lock, no interaction with Git
+# push result file content first - does not need a lock, no interaction with Git
 datalad push --to output-storage
-# and the output branch
+# and the output branch next - needs a lock to prevent concurrency issues
 flock --verbose $DSLOCKFILE git push outputstore
 
 echo SUCCESS
