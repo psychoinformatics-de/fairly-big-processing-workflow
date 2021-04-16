@@ -27,7 +27,7 @@ input_store="ria+file:///data/group/psyinf/forrestinput"
 # FIX-ME: Supply a path or URL to the place where your container dataset is
 # located, and a path or URL to the place where an input (super)dataset exists.
 containername='cat'
-container="ria+http://containers.ds.inm7.de#~cat"
+containerstore="ria+http://containers.ds.inm7.de"
 data="https://github.com/psychoinformatics-de/studyforrest-data-structural.git"
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -45,7 +45,7 @@ cd $source_ds
 
 # clone the container-dataset as a subdataset. Please see README for
 # instructions how to create a container dataset.
-datalad clone -d . "${container}" code/pipeline
+datalad clone -d . "${containerstore}#~${containername}" code/pipeline
 
 # Register the container in the top-level dataset.
 #-------------------------------------------------------------------------------
@@ -236,7 +236,7 @@ executable     = \$ENV(PWD)/code/participant_job
 environment = "\\
   JOBID=\$(subject).\$(Cluster) \\
   DSLOCKFILE=\$ENV(PWD)/.condor_datalad_lock \\
-  DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__101cat='ria+http://containers.ds.inm7.de#{id}' \\
+  DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__101cat='{containerstore}#{id}' \\
   GIT_AUTHOR_NAME='${git_name}' \\
   GIT_AUTHOR_EMAIL='${git_email}' \\
   "
@@ -287,34 +287,52 @@ datalad save -m "HTCondor submission setup" code/ .gitignore
 
 echo .SLURM_datalad_lock >> .gitignore
 
+cat > code/runJOB.sh << "EOT"
+#!/bin/bash
+#
+# splitting the all.jobs file according to node distribution
+# in the PWD numbered files [1 -> splits] are created and deleted after
+JOBFILE=code/all.jobs
+splits=FIXME
+
+parallel -j${splits} --block -1 -a $JOBFILE --header : --pipepart 'cat > {#}'
+# submitting independent SLURM jobs for efficiency and robustness
+parallel 'sbatch code/catpart.sbatch {}' ::: $(seq ${splits})
+
+EOT
+chmod +x code/runJOB.sh
+
+
 # SLURM compute environment
 # makes sure that the jobs per node don't exceed RAM and wall clock time !!
 cat > code/process.sbatch << "EOT"
 #!/bin/bash -x
-#SBATCH --account=jinm72
+### If you need a compute time project for job submission set here
+#SBATCH --account=FIXME
 #SBATCH --mail-user=FIXME
 #SBATCH --mail-type=END
 #SBATCH --job-name=FIXME
 #SBATCH --output=logs/processing-out.%j
 #SBATCH --error=logs/processing-err.%j
+### If there's a time limit for job runs, set (max) here
 #SBATCH --time=24:00:00
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=256
-#SBATCH --partition=dc-cpu-bigmem
+### If specific partitions are available i.e. with more RAM define here
+#SBATCH --partition=FIXME
 #SBATCH --nodes=1
 
-srun parallel --delay 0.2  -a code/aomic_cat.jobs --use-cpus-instead-of-cores
+### Define number of jobs that arer run simultaneously
+srun parallel --delay 0.2  -a code/all.jobs --FIXME
 
 wait
 EOT
 
 
-
 # create job.call-file for all commands to call
-# each subject is processed on RAMDISK in an own dataset
-fastdata=/dev/shm/
+# each subject is processed on a temporary/local store in an own dataset
+temporary_store=/dev/shm/
 
-cat > code/call.cat << EOT
+cat > code/call.job << EOT
 #!/bin/bash -x
 #
 # redundant input per subject
@@ -323,15 +341,14 @@ subid=\$1
 
 # define DSLOCKFILE, DATALAD & GIT ENV for participant_job
 export DSLOCKFILE=$(pwd)/.SLURM_datalad_lock \
-DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__100aomic=${input_store}#{id} \
-DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__101cat=${container}#{id} \
+DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__101cat=${containerstore}#{id} \
 GIT_AUTHOR_NAME=\$(git config user.name) \
 GIT_AUTHOR_EMAIL=\$(git config user.email) \
 JOBID=\${subid:4}.\${SLURM_JOB_ID} \
 
 # use subject specific folder
-mkdir $fastdata\${subid}
-cd $fastdata\${subid}
+mkdir ${temporary_store}/\${JOBID}
+cd ${temporary_store}/\${JOBID}
 
 # run things
 $(pwd)/code/participant_job \
@@ -341,12 +358,16 @@ $(git remote get-url --push output) \
 >$(pwd)/logs/\${JOBID}.out \
 2>$(pwd)/logs/\${JOBID}.err
 
+cd ${temporary_store}/
+chmod 777 -R ${temporary_store}/\${JOBID}
+rm -fr ${temporary_store}/\${JOBID}
+
 EOT
 
-chmod +x code/call.cat
+chmod +x code/call.job
 
 # create job-file with commands for all jobs
-cat > code/aomic_cat.jobs << "EOT"
+cat > code/all.jobs << "EOT"
 #!/bin/bash
 EOT
 
@@ -355,12 +376,13 @@ EOT
 # analysis should parallelize. Here, subject directories on the first hierarchy
 # level in the input data are returned by searching for the 'sub-*' prefix.
 #
-for s in $(find inputs/aomic/ -maxdepth 1 -type d -name 'sub-*' -printf '%f\n'); do
-  printf "code/call.cat $s\n" >> code/aomic_cat.jobs
+
+for s in $(find inputs/data -maxdepth 1 -type d -name 'sub-*' -printf '%f\n'); do
+  printf "code/call.job $s\n" >> code/all.jobs
 done
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-chmod +x code/aomic_cat.jobs
+chmod +x code/all.jobs
 datalad save -m "SLURM submission setup" code/ .gitignore
 
 ################################################################################
