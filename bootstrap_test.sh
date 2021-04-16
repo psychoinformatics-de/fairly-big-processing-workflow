@@ -169,32 +169,11 @@ git checkout -b "job-$JOBID"
 # recomputation outside the scope of the original Condor setup
 datalad get -n "inputs/data/${subid}"
 
-# -----------------------------------------------------------------------------
-# FMRIPREP SPECIFIC ADJUSTMENTS - NOT NECESSARY FOR OTHER PIPELINES
-# create workdir for fmriprep inside to simplify singularity call
-# PWD will be available in the container
-# mkdir -p .git/tmp/wdir
-# pybids (inside fmriprep) gets angry when it sees dangling symlinks
-# of .json files -- wipe them out, spare only those that belong to
-# the participant we want to process in this job
-# find inputs/data -mindepth 2 -name '*.json' -a ! -wholename "$3"'*T*w*' -delete
-
-# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-
-
-
 # ------------------------------------------------------------------------------
-# FIX-ME: Replace the datalad containers-run command starting below with a
-# command that fits your analysis. (Note that the command for CAT processing is
-# quite complex and involves separate scripts - if you are not using CAT
-# processing, remove everything until \; )
+# FIXME: Replace the datalad containers-run command starting below with a
+# command that fits your analysis. Here, it invokes the script "runfmriprep.sh"
+# that contains an fmriprep parametrization.
 
-# the meat of the matter is the datalad containers-run call, but in an initial
-# find command we first remove all json files that are unrelated to the
-# participant that is being processed (see
-# https://github.com/bids-standard/pybids/issues/631 for the bug report), else
-# a recomputation will fail.
 datalad containers-run \
   -m "Compute ${subid}" \
   -n bids-fmriprep \
