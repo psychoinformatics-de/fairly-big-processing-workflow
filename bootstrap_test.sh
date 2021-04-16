@@ -3,7 +3,7 @@ set -e -u
 ###############################################################################
 #                               HOW TO USE                                    #
 #                                                                             #
-#       Please adjust every variable within a "FIX-ME" markup to your         #
+#       Please adjust every variable within a "FIXME" markup to your          #
 #       filesystem, data, and software container.                             #
 #       Depending on which job scheduling system you use, comment out         #
 #       or remove the irrelevant system.                                      #
@@ -14,7 +14,7 @@ set -e -u
 
 # Jobs are set up to not require a shared filesystem (except for the lockfile)
 # ------------------------------------------------------------------------------
-# FIX-ME: Supply a RIA-URL to a RIA store that will collect all outputs, and a
+# FIXME: Supply a RIA-URL to a RIA store that will collect all outputs, and a
 # RIA-URL to a different RIA store from which the dataset will be cloned from.
 # Both RIA stores will be created if they don't yet exist.
 output_store="ria+file:///data/group/psyinf/myoutputstore"
@@ -23,8 +23,8 @@ input_store="ria+file:///data/group/psyinf/myinputstore"
 
 
 # ------------------------------------------------------------------------------
-# FIX-ME: Supply the name of container you have registered (see README for info)
-# FIX-ME: Supply a path or URL to the place where your container dataset is
+# FIXME: Supply the name of container you have registered (see README for info)
+# FIXME: Supply a path or URL to the place where your container dataset is
 # located, and a path or URL to the place where an input (super)dataset exists.
 containername='bids-fmriprep'
 container="https://github.com/ReproNim/containers.git"
@@ -33,7 +33,7 @@ data="https://github.com/psychoinformatics-de/studyforrest-data-structural.git"
 
 
 #-------------------------------------------------------------------------------
-# FIX-ME: Replace this name with a dataset name of your choice.
+# FIXME: Replace this name with a dataset name of your choice.
 source_ds="forrest"
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -49,9 +49,12 @@ datalad clone -d . "${container}" code/pipeline
 
 # Register the container in the top-level dataset.
 #-------------------------------------------------------------------------------
-# FIX-ME: If necessary, configure your own container call in the --call-fmt
+# FIXME: If necessary, configure your own container call in the --call-fmt
 # argument. If your container does not need a custom call format, remove the
 # --call-fmt flag and its options below.
+# This container call-format is customized to execute an fmriprep call defined
+# in a separate script, and does not need modifications if you stick to
+# fmriprep.
 datalad containers-add \
   --call-fmt 'singularity exec -B {{pwd}} --cleanenv {img} {cmd}' \
   -i code/pipeline/images/bids/bids-fmriprep--20.2.0.sing \
@@ -65,7 +68,7 @@ git commit --amend -m 'Register pipeline dataset'
 
 # import custom code
 # ------------------------------------------------------------------------------
-# FIX-ME: If you need custom scripts, copy them into the analysis source
+# FIXME: If you need custom scripts, copy them into the analysis source
 # dataset. If you don't need custom scripts, remove the copy and commit
 # operations below. (The scripts below are only relevant for CAT processing)
 cp ~/license.txt code/license.txt
@@ -219,7 +222,7 @@ git_email="$(git config user.email)"
 
 # compute environment for a single job
 #-------------------------------------------------------------------------------
-# FIX-ME: Adjust job requirements to your needs
+# FIXME: Adjust job requirements to your needs
 
 cat > code/process.condor_submit << EOT
 universe       = vanilla
@@ -275,7 +278,7 @@ queue
 EOT
 
 # ------------------------------------------------------------------------------
-# FIX-ME: Adjust the find command below to return the unit over which your
+# FIXME: Adjust the find command below to return the unit over which your
 # analysis should parallelize. Here, subject directories on the first hierarchy
 # level in the input data are returned by searching for the 'sub-*' prefix.
 # The setup below creates an HTCondor DAG.
@@ -367,7 +370,7 @@ cat > code/aomic_cat.jobs << "EOT"
 EOT
 
 # ------------------------------------------------------------------------------
-# FIX-ME: Adjust the find command below to return the unit over which your
+# FIXME: Adjust the find command below to return the unit over which your
 # analysis should parallelize. Here, subject directories on the first hierarchy
 # level in the input data are returned by searching for the 'sub-*' prefix.
 #
