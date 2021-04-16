@@ -189,8 +189,45 @@ After job completion, perform a few sanity checks, merge the result branches,
 and restore file availability (see the general section [After workflow
 completion](#after-workflow-completion)).
 
+### Working with a UKB-CAT result dataset
 
+As detailed in Wierzba et al., the results of the CAT computation on UKBiobank
+data are wrapped into four tarballs per participant. This allowed us to save
+results in a single dataset (see
+[handbook.datalad.org/r.html?gobig](https://handbook.datalad.org/r.html?gobig)
+for dataset file number limits).
+This result dataset can be used to create special-purpose datasets that contain
+dedicated result subsets and can be used for further analyses.
 
+The code below sketches a setup to create such datasets in a provenance-tracked
+manner:
+
+```
+# create a dataset that includes tissue volume statistics per ROI, parcellation,
+# and subject:
+$ datalad create ukb_tiv
+$ cd ukb_tiv
+# register the ukb results as a subdataset:
+$ datalad clone -d . <path/to/ukb_vbm> inputs/ukb_vbm
+# extract volumes from inforoi.tar.gz and parse them from xml to csv.
+$ datalad run -m "..."
+  --input "inputs/ukb_vbm/sub-*/*/inforoi.tar.gz"
+  --output "stats/"
+  "sh -c 'rm -rf stats; mkdir -p stats; find inputs/ukb_vbm -name inforoi.tar.gz \
+  -print -exec python3 code/tiv_xml2csv.py stats/cat {{}} \\;'"
+# In the end, the ukb_tiv has a CSV file for each parcellation, and each CSV file
+# has one row per subject with the respective tissue statistics.
+
+# For a different use case, but in a similar way,
+# we extracted the vbm results for all subjects using
+$ datalad run -m "..."
+  --input inputs/ukb_vbm/sub-*/*/vbm.tar.gz
+  --output .
+  "rm -rf m0wp1; mkdir -p m0wp1; find inputs/ukb_vbm -name vbm.tar.gz -exec \
+   tar --one-top-level=m0wp1 --strip-components=1 --wildcards -xvf {{}} \
+   '\"'\"'mri/m0wp1*.nii'\"'\"' \\; ; find m0wp1 -name '\"'\"'*.nii'\"'\"' -exec gzip -9 -v {{}} \\;'"
+
+```
 
 ## Adjust the workflow
 
@@ -213,6 +250,10 @@ merge conflict in data files. This can be solved in simple cases (see
 [here](http://handbook.datalad.org/en/latest/beyond_basics/101-171-enki.html#merging-results)
 for an example), but requires experience with Git.
 
+We also recommend to tune your analysis for computational efficiency and minimal
+storage demands. Optimize the compute time of your pipeline, audit carefully
+that only relevant results are saved and remove uncessary results right within
+your pipeline, and, if necessary, wrap job results into tarballs.
 
 ### Create a container dataset
 
