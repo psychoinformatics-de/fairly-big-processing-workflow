@@ -345,6 +345,8 @@ EOT
 
 # create job.call-file for all commands to call
 # each subject is processed on a temporary/local store in an own dataset
+# FIX-ME: Adjust the temporary_store variable to point to a temporary/scratch
+# location on your system
 temporary_store=/dev/shm/
 
 
