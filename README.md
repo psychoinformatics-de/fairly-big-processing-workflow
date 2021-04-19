@@ -335,8 +335,14 @@ job scheduling setups with a pull request.
 #### HTCondor submission
 
 If your HPC systems run HTCondor, the complete analysis can be submitted as a
-DAG. The bootstrapping script will have created the necessary files.
-To submit the jobs inside of the created analysis dataset run:
+Directed Acyclic Graph.
+The bootstrapping script will have created the necessary files - by default,
+jobs are parallelized over subject directories, and specified inside of the file
+``code/process.condor_data``. Job requirements, job-internal environment
+variables, and submission setup are specified in ``code/process.condor_submit``.
+If you have adjusted your job setup and
+requirements in the bootstrapping script, you can submit the jobs inside of the
+created analysis dataset like this:
 
 ```
 # create a directory for logs (it is gitignored)
@@ -344,16 +350,23 @@ $ mkdir -p dag_tmp
 # copy the dag into this directory
 $ cp code/process.condor_dag dag_tmp/
 # submit the DAG. -maxidle 1 slides the jobs into the system smoothly instead of
-# all at once. Change the batch name, if you want to
+# all at once. Change the batch name and maxidle parameter, if you want to
 condor_submit_dag -batch-name UKB -maxidle 1 dag_tmp/process.condor_dag
 ```
 
 #### SLURM submission
 
-If your HPC systems run SLURM, the complete analysis can be submitted from an
-sbatch.
+If your HPC systems run SLURM, the complete analysis submission is built from
+the following set of files:
 
-TODO
+- ``code/all.jobs`` defines individual computations (by default, subject-wise)
+- ``code/process.sbatch`` defines the compute environment (requires user input!)
+- ``code/call.job`` defines the job setup and teardown as well as
+  (adjustable/extandable) job-internal environment variables
+- ``code/runJOB.sh`` performs the job submission in user-defined split sizes
+
+If you have adjusted your job setup and requirements in the bootstrapping
+script, you can submit the jobs by executing ``code/runJOB.sh``
 
 ## After workflow completion
 
