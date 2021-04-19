@@ -295,11 +295,16 @@ cat > code/runJOB.sh << "EOT"
 JOBFILE=code/all.jobs
 splits=FIXME
 
+# the JOBFILE containing all jobs as single lines is split into seperate files
+# numbered from 1 to [splits] including header each and written into PWD
 parallel -j${splits} --block -1 -a $JOBFILE --header : --pipepart 'cat > {#}'
+
 # submitting independent SLURM jobs for efficiency and robustness
+# parallel SLURM submission of jobs each with one of [1..splits] jobfile
 parallel 'sbatch code/catpart.sbatch {}' ::: $(seq ${splits})
 
 EOT
+
 chmod +x code/runJOB.sh
 
 
@@ -316,13 +321,14 @@ cat > code/process.sbatch << "EOT"
 #SBATCH --error=logs/processing-err.%j
 ### If there's a time limit for job runs, set (max) here
 #SBATCH --time=24:00:00
-#SBATCH --ntasks-per-node=1
 ### If specific partitions are available i.e. with more RAM define here
 #SBATCH --partition=FIXME
 #SBATCH --nodes=1
 
-### Define number of jobs that arer run simultaneously
-srun parallel --delay 0.2  -a code/all.jobs --FIXME
+### Define number of jobs that are run simultaneously: 125 is good with RAM disk
+srun parallel --delay 0.2 -a $1 -j FIXME
+
+rm $1
 
 wait
 EOT
@@ -330,6 +336,7 @@ EOT
 
 # create job.call-file for all commands to call
 # each subject is processed on a temporary/local store in an own dataset
+# define local storage for writting temporary files for performace and to save inodes
 temporary_store=/dev/shm/
 
 cat > code/call.job << EOT
@@ -346,7 +353,7 @@ GIT_AUTHOR_NAME=\$(git config user.name) \
 GIT_AUTHOR_EMAIL=\$(git config user.email) \
 JOBID=\${subid:4}.\${SLURM_JOB_ID} \
 
-# use subject specific folder
+# use subject specific folder to clone input dataset
 mkdir ${temporary_store}/\${JOBID}
 cd ${temporary_store}/\${JOBID}
 
@@ -358,6 +365,7 @@ $(git remote get-url --push output) \
 >$(pwd)/logs/\${JOBID}.out \
 2>$(pwd)/logs/\${JOBID}.err
 
+# wipe local store with job specific data after completion, especially when using RAM disk
 cd ${temporary_store}/
 chmod 777 -R ${temporary_store}/\${JOBID}
 rm -fr ${temporary_store}/\${JOBID}
