@@ -1,4 +1,4 @@
-# A template for decentralized processing
+# A template for decentralized, reproducible processing
 
 This repository contains all materials described in Wierzba et al. (2021) and
 can be used as a template to set up similar processing workflows.
@@ -63,6 +63,9 @@ The machines involved in your workflow need the following software:
 - [datalad](https://www.datalad.org/) and its dependencies (Installation
   instructions are at [handbook.datalad.org](http://handbook.datalad.org/en/latest/intro/installation.html#install)).
   Make sure that you have recent versions of DataLad, git-annex, and Git.
+- [datalad-container](http://docs.datalad.org/projects/container/en/latest/index.html#),
+  a DataLad extension for working with containerized software environments that
+  can be installed using [pip](https://pip.pypa.io/en/stable/): ``pip install datalad-container``.
 - [Singularity](https://sylabs.io/docs/)
 - The Unix tool [flock](https://linux.die.net/man/1/flock) for file locking
 - A job scheduling/batch processing tool such as [HTCondor](https://research.cs.wisc.edu/htcondor/) or
@@ -120,7 +123,31 @@ it and use it can be found at
 
 #### Transform the software container into a dataset
 
-TODO
+Any software container can be added to a dataset with the following steps:
+
+Create a dataset:
+```
+$ datalad create pipeline
+$ cd pipeline
+```
+
+Add a software-container to the dataset. The ``--url`` parameter can be a local
+path to your container image, or a URL to a container hub such as Dockerhub or
+Singularity Hub.
+By default, a software container will be called with ``singularity exec
+<image>``. In order to customize this invocation, for example into ``singularity
+run <image> <customcommand>``, use the ``--call-fmt`` argument. Below, the
+invocation is customized to bindmount the current working directory into the
+container, and execute a command instead of the containers' runscript.
+A different example of this is also in the tutorial in this repository.
+
+```
+$ datalad containers-add cat --url <path/or/url/to/image>  \
+  --call-fmt "singularity run -B {{pwd}} --cleanenv {img} {cmd}"
+```
+
+Afterwards, you can use this dataset to link your software container to your
+analysis setup.
 
 ### UK Biobank data
 
@@ -130,13 +157,15 @@ use the DataLad extension
 [datalad-ukbiobank](https://github.com/datalad/datalad-ukbiobank) to transform
 UK Biobank data into a BIDS-like structured dataset. The extension can be used
 when no data has yet been retrieved, but also when data tarballs have already
-been downloaded to local infrastructure.
+been downloaded to local infrastructure. Please consult the software's
+[documentation](http://docs.datalad.org/projects/ukbiobank/en/latest/index.html)
+for more information and tutorials.
 
 ### Adjust and run the bootstrapping script
 
-``bootstrap.sh`` sets up the complete analysis set up (relevant input and output
+``bootstrap.sh`` sets up the complete CAT analysis set up (relevant input and output
 RIA stores, participant-wise jobs, job submission setup for HTCondor or SLURM)
-automatically, but it requires adjustments to your paths and workflows.
+automatically, but it requires adjustments to your local paths.
 Within the script, a ``FIX-ME`` markup indicates where adjustments may be
 necessary.
 We recommend to open the file in a text reader of your choice and work through
@@ -149,19 +178,56 @@ bash bootstrap.sh
 ```
 
 If you can see the word "SUCCESS" at the end of the log messages in prints to
-your terminal and no suspicuous errors/warning, set up completed successfully.
+your terminal and no suspicious errors/warning, set up completed successfully.
 It will have created a DataLad dataset underneath your current working
-directory, by default under the name TODO.
+directory, by default under the name ``cat``.
 
 Navigate into this directory, and submit the compute jobs with the job
 scheduling setup you have chosen in ``bootstrap.sh`` (see the general section
-[Job submission](#job-submission).
+[Job submission](#job-submission)).
 After job completion, perform a few sanity checks, merge the result branches,
 and restore file availability (see the general section [After workflow
 completion](#after-workflow-completion)).
 
+### Working with a UKB-CAT result dataset
 
+As detailed in Wierzba et al., the results of the CAT computation on UKBiobank
+data are wrapped into four tarballs per participant. This allowed us to save
+results in a single dataset (see
+[handbook.datalad.org/r.html?gobig](https://handbook.datalad.org/r.html?gobig)
+for dataset file number limits).
+This result dataset can be used to create special-purpose datasets that contain
+dedicated result subsets and can be used for further analyses.
 
+The code below sketches a setup to create such datasets in a provenance-tracked
+manner:
+
+```
+# create a dataset that includes tissue volume statistics per ROI, parcellation,
+# and subject:
+$ datalad create ukb_tiv
+$ cd ukb_tiv
+# register the ukb results as a subdataset:
+$ datalad clone -d . <path/to/ukb_vbm> inputs/ukb_vbm
+# extract volumes from inforoi.tar.gz and parse them from xml to csv.
+$ datalad run -m "..."
+  --input "inputs/ukb_vbm/sub-*/*/inforoi.tar.gz"
+  --output "stats/"
+  "sh -c 'rm -rf stats; mkdir -p stats; find inputs/ukb_vbm -name inforoi.tar.gz \
+  -print -exec python3 code/tiv_xml2csv.py stats/cat {{}} \\;'"
+# In the end, the ukb_tiv has a CSV file for each parcellation, and each CSV file
+# has one row per subject with the respective tissue statistics.
+
+# For a different use case, but in a similar way,
+# we extracted the vbm results for all subjects using
+$ datalad run -m "..."
+  --input inputs/ukb_vbm/sub-*/*/vbm.tar.gz
+  --output .
+  "rm -rf m0wp1; mkdir -p m0wp1; find inputs/ukb_vbm -name vbm.tar.gz -exec \
+   tar --one-top-level=m0wp1 --strip-components=1 --wildcards -xvf {{}} \
+   '\"'\"'mri/m0wp1*.nii'\"'\"' \\; ; find m0wp1 -name '\"'\"'*.nii'\"'\"' -exec gzip -9 -v {{}} \\;'"
+
+```
 
 ## Adjust the workflow
 
@@ -184,6 +250,10 @@ merge conflict in data files. This can be solved in simple cases (see
 [here](http://handbook.datalad.org/en/latest/beyond_basics/101-171-enki.html#merging-results)
 for an example), but requires experience with Git.
 
+We also recommend to tune your analysis for computational efficiency and minimal
+storage demands. Optimize the compute time of your pipeline, audit carefully
+that only relevant results are saved and remove uncessary results right within
+your pipeline, and, if necessary, wrap job results into tarballs.
 
 ### Create a container dataset
 
@@ -265,8 +335,14 @@ job scheduling setups with a pull request.
 #### HTCondor submission
 
 If your HPC systems run HTCondor, the complete analysis can be submitted as a
-DAG. The bootstrapping script will have created the necessary files.
-To submit the jobs inside of the created analysis dataset run:
+Directed Acyclic Graph.
+The bootstrapping script will have created the necessary files - by default,
+jobs are parallelized over subject directories, and specified inside of the file
+``code/process.condor_data``. Job requirements, job-internal environment
+variables, and submission setup are specified in ``code/process.condor_submit``.
+If you have adjusted your job setup and
+requirements in the bootstrapping script, you can submit the jobs inside of the
+created analysis dataset like this:
 
 ```
 # create a directory for logs (it is gitignored)
@@ -274,16 +350,23 @@ $ mkdir -p dag_tmp
 # copy the dag into this directory
 $ cp code/process.condor_dag dag_tmp/
 # submit the DAG. -maxidle 1 slides the jobs into the system smoothly instead of
-# all at once. Change the batch name, if you want to
+# all at once. Change the batch name and maxidle parameter, if you want to
 condor_submit_dag -batch-name UKB -maxidle 1 dag_tmp/process.condor_dag
 ```
 
 #### SLURM submission
 
-If your HPC systems run SLURM, the complete analysis can be submitted from an
-sbatch.
+If your HPC systems run SLURM, the complete analysis submission is built from
+the following set of files:
 
-TODO
+- ``code/all.jobs`` defines individual computations (by default, subject-wise)
+- ``code/process.sbatch`` defines the compute environment (requires user input!)
+- ``code/call.job`` defines the job setup and teardown as well as
+  (adjustable/extandable) job-internal environment variables
+- ``code/runJOB.sh`` performs the job submission in user-defined split sizes
+
+If you have adjusted your job setup and requirements in the bootstrapping
+script, you can submit the jobs by executing ``code/runJOB.sh``
 
 ## After workflow completion
 
@@ -363,14 +446,15 @@ done | tee /tmp/haveres.txt
 If there are less than 5000 branches to merge, you will probably be fine by
 merging all branches at once. With more branches, the branch names can exceed
 your terminal length limitation. In these cases, we recommend merging them in
-batches of 5000:
+batches of, e.g., 5000:
 
 ```
 $ git merge -m "Merge computing results (5k batch)" $(for i in $(head -5000 ../haveres.txt | tail -5000); do echo origin/$i; done)
 ```
 
-Please note: Merging the batches progressively slows down. When merging ~40k
-branches, we save the following times (in minutes) for merging batches:
+Please note: The Merging operations progressively slows down with a large amount
+of branches. When merging ~40k branches in batches of 5000, we saw the following
+merge times (in minutes) for the batches:
 15min,  22min, 32min, 40min, 49min, 58min, 66min
 
 4. Push the merge back

@@ -7,11 +7,12 @@ with [fmriprep](https://github.com/psychoinformatics-de/studyforrest-data-struct
 ### Software requirements and other prerequisites
 
 - DataLad version 0.14 or higher
+- The DataLad extension [datalad-container](http://docs.datalad.org/projects/container/en/latest/index.html)
 - Singularity
 - [flock](https://linux.die.net/man/1/flock)
 - HTCondor (TODO: SLURM)
 - a freesurfer license file ([free
-  registration](https://surfer.nmr.mgh.harvard.edu/registration.html) required
+  registration](https://surfer.nmr.mgh.harvard.edu/registration.html) required)
 
 Please make sure that you have a configured Git identity (see [instructions
 here](http://handbook.datalad.org/intro/installation.html#initial-configuration)).
@@ -39,7 +40,7 @@ Open it in an editor of your choice, and adjust the following fields:
 No other adjustments should be necessary. Optionally, you can
 
 - adjust the variable ``source_ds`` to a name of your choice. If
-  you do not modify it, the worklfow will set up a temporary analysis dataset
+  you do not modify it, the workflow will set up a temporary analysis dataset
   called ``forrest``.
 - If your freesurfer license is not located in your home directory, replace the
   line ``cp ~/license.txt code/license.txt`` with an alternative
@@ -140,7 +141,7 @@ find the most recent commit on the ``master`` branch (or ``main`` branch, if
 your default branch is called ``main``).
 
 ```
-git show-ref master | cut -d ' ' -f1
+$ git show-ref master | cut -d ' ' -f1
 609e5395596b9fbc8534f9c175dbf95d631c633c
 ```
 
@@ -149,7 +150,7 @@ job branch has a new commit on top of the reference commit the analysis started
 from.
 
 ```
-for i in $(git branch -a | grep job- | sort); do [ x"$(git show-ref $i \
+$ for i in $(git branch -a | grep job- | sort); do [ x"$(git show-ref $i \
   | cut -d ' ' -f1)" = x"609e5395596b9fbc8534f9c175dbf95d631c633c" ]  && \
   echo $i; done | tee /tmp/nores.txt | wc -l
 0
@@ -197,7 +198,7 @@ conflicts in the ``CITATION.md`` file.
 After you checked that everything is in order...
 
 ```
-tree -d fmriprep
+$ tree -d fmriprep
 fmriprep
 ├── sub-01
 │   ├── anat
@@ -220,7 +221,7 @@ fmriprep
 ... push the merge back in to the outputstore:
 
 ```
-git push
+$ git push
 Enumerating objects: 23, done.
 Counting objects: 100% (23/23), done.
 Delta compression using up to 32 threads
@@ -235,7 +236,7 @@ The name of the storage remote in the output store is "output-storage". We can
 see it listed in a ``datalad siblings`` call:
 
 ```
-datalad siblings
+$ datalad siblings
 .: here(+) [git]
 .: origin(-) [/data/group/psyinf/myoutputstore/275/8dbcb-fa39-40fb-8e1e-6b30d9103549 (git)]
 .: output-storage(+) [ora]
@@ -247,7 +248,7 @@ your dataset. Its important to do the operation with a ``--fast`` flag for big
 datasets!
 
 ```
-git annex fsck --fast -f output-storage
+$ git annex fsck --fast -f output-storage
 fsck fmriprep/sub-01/anat/sub-01_desc-brain_mask.json (fixing location log) ok
 fsck fmriprep/sub-01/anat/sub-01_desc-brain_mask.nii.gz (fixing location log) ok
 fsck fmriprep/sub-01/anat/sub-01_desc-preproc_T1w.json (fixing location log) ok
@@ -374,4 +375,39 @@ get(ok): inputs/data/sub-13/anat/sub-13_T2w.json (file) [from mddatasrc...]
 get(ok): inputs/data/sub-13/anat/sub-13_T2w.nii.gz (file) [from mddatasrc...]
 get(ok): inputs/data/sub-13/anat/sub-13_T2w_defacemask.nii.gz (file) [from mddatasrc...]
 get(ok): inputs/data/sub-13/anat (directory)
+[...]
+[INFO   ] Scanning for unlocked files (this may take some time)
+[INFO   ] Remote origin not usable by git-annex; setting annex-ignore
+get(ok): code/pipeline/images/bids/bids-fmriprep--20.2.0.sing (file) [from datalad...]
+[...]
+[INFO   ] == Command start (output follows) =====
+[...] FMRIPREP [...]
+	 fMRIPrep finished successfully!
+210416-09:31:48,560 nipype.workflow IMPORTANT:
+	 Works derived from this fMRIPrep execution should include the boilerplate text found in <OUTPUT_PATH>/fmriprep/logs/CITATION.md.
+Sentry is attempting to send 0 pending error messages
+Waiting up to 2 seconds
+Press Ctrl-C to quit
+[INFO   ] == Command exit (modification check follows) =====
+  [14 similar messages have been suppressed]
+delete(ok): fmriprep/sub-10/log/20210415-084510_4d00340f-c56c-4c70-86bc-a11c90434e47/fmriprep.toml (file)
+add(ok): fmriprep/.bidsignore (file)
+add(ok): fmriprep/dataset_description.json (file)
+add(ok): fmriprep/sub-10.html (file)
+add(ok): fmriprep/sub-10/log/20210416-080524_22eae3d2-4b4c-469c-ad69-c32719e59b54/fmriprep.toml (file)
+add(ok): fmriprep/sub-10/anat/sub-10_desc-brain_mask.json (file)
+add(ok): fmriprep/sub-10/anat/sub-10_desc-brain_mask.nii.gz (file)
+add(ok): fmriprep/sub-10/anat/sub-10_desc-preproc_T1w.json (file)
+add(ok): fmriprep/sub-10/anat/sub-10_desc-preproc_T1w.nii.gz (file)
+add(ok): fmriprep/sub-10/anat/sub-10_dseg.nii.gz (file)
+add(ok): fmriprep/sub-10/anat/sub-10_from-MNI152NLin2009cAsym_to-T1w_mode-image_xfm.h5 (file)
+  [17 similar messages have been suppressed]
+save(ok): . (dataset)
+action summary:
+  add (ok: 27)
+  delete (ok: 1)
+  get (notneeded: 3, ok: 12)
+  run.remove (ok: 24)
+  save (notneeded: 2, ok: 1)
+datalad rerun bb75237bd2ffaca78153  335.76s user 79.67s system 5% cpu 2:04:41.81 total
 ```

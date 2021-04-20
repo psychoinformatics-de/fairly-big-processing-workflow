@@ -3,7 +3,7 @@ set -e -u
 ###############################################################################
 #                               HOW TO USE                                    #
 #                                                                             #
-#       Please adjust every variable within a "FIX-ME" markup to your         #
+#       Please adjust every variable within a "FIXME" markup to your          #
 #       filesystem, data, and software container.                             #
 #       Depending on which job scheduling system you use, comment out         #
 #       or remove the irrelevant system.                                      #
@@ -14,7 +14,7 @@ set -e -u
 
 # Jobs are set up to not require a shared filesystem (except for the lockfile)
 # ------------------------------------------------------------------------------
-# FIX-ME: Supply a RIA-URL to a RIA store that will collect all outputs, and a
+# FIXME: Supply a RIA-URL to a RIA store that will collect all outputs, and a
 # RIA-URL to a different RIA store from which the dataset will be cloned from.
 # Both RIA stores will be created if they don't yet exist.
 output_store="ria+file:///data/group/psyinf/myoutputstore"
@@ -23,8 +23,8 @@ input_store="ria+file:///data/group/psyinf/myinputstore"
 
 
 # ------------------------------------------------------------------------------
-# FIX-ME: Supply the name of container you have registered (see README for info)
-# FIX-ME: Supply a path or URL to the place where your container dataset is
+# FIXME: Supply the name of container you have registered (see README for info)
+# FIXME: Supply a path or URL to the place where your container dataset is
 # located, and a path or URL to the place where an input (super)dataset exists.
 containername='bids-fmriprep'
 container="https://github.com/ReproNim/containers.git"
@@ -33,7 +33,7 @@ data="https://github.com/psychoinformatics-de/studyforrest-data-structural.git"
 
 
 #-------------------------------------------------------------------------------
-# FIX-ME: Replace this name with a dataset name of your choice.
+# FIXME: Replace this name with a dataset name of your choice.
 source_ds="forrest"
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -49,11 +49,14 @@ datalad clone -d . "${container}" code/pipeline
 
 # Register the container in the top-level dataset.
 #-------------------------------------------------------------------------------
-# FIX-ME: If necessary, configure your own container call in the --call-fmt
+# FIXME: If necessary, configure your own container call in the --call-fmt
 # argument. If your container does not need a custom call format, remove the
 # --call-fmt flag and its options below.
+# This container call-format is customized to execute an fmriprep call defined
+# in a separate script, and does not need modifications if you stick to
+# fmriprep.
 datalad containers-add \
-  --call-fmt 'singularity run -B {{pwd}} --cleanenv {img} {cmd}' \
+  --call-fmt 'singularity exec -B {{pwd}} --cleanenv {img} {cmd}' \
   -i code/pipeline/images/bids/bids-fmriprep--20.2.0.sing \
   $containername
 #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -65,7 +68,7 @@ git commit --amend -m 'Register pipeline dataset'
 
 # import custom code
 # ------------------------------------------------------------------------------
-# FIX-ME: If you need custom scripts, copy them into the analysis source
+# FIXME: If you need custom scripts, copy them into the analysis source
 # dataset. If you don't need custom scripts, remove the copy and commit
 # operations below. (The scripts below are only relevant for CAT processing)
 cp ~/license.txt code/license.txt
@@ -83,6 +86,47 @@ datalad create-sibling-ria -s input --storage-sibling off "${input_store}"
 datalad clone -d . ${data} inputs/data
 # amend the previous commit with a nicer commit message
 git commit --amend -m 'Register input data dataset as a subdataset'
+
+
+# -----------------------------------------------------------------------------
+# FIXME: Customize your fmriprep call below.
+# -----------------------------------------------------------------------------
+# write a custom fmriprep call into a separate script. This allows to not only
+# specify an fmriprep call of your choice, but also perform necessary
+# preparations. In case of fmriprep, this is the creation of a temporary working
+# directory, and a temporary removal of all irrelevant JSON files, which ensures
+# recomputation.
+cat > code/runfmriprep.sh << "EOT"
+#!/bin/bash
+
+subid=$1
+
+# -----------------------------------------------------------------------------
+# create workdir for fmriprep inside the dataset to simplify singularity call
+# PWD will be available in the container
+mkdir -p .git/tmp/wdir
+
+# pybids (inside fmriprep) will try to read all JSON files in a dataset. In case
+# of a recomputation, JSON files of other subjects can be dangling symlinks.
+# We prevent pybids from crashing the fmriprep run when it can't read those, by
+# wiping them out temporarily via renaming.
+# We spare only those that belong to the participant we want to process.
+# After job completion, the jsons will be restored.
+# See https://github.com/bids-standard/pybids/issues/631 for more information.
+
+find inputs/data -mindepth 2 -name '*.json' -a ! -wholename "$subid" | sed -e "p;s/json/xyz/" | xargs -n2 mv
+
+# execute fmriprep. Its runscript is available as /singularity within the
+# container. Custom fmriprep parametrization can be done here.
+/singularity inputs/data . participant --participant-label $subid \
+    --anat-only -w .git/tmp/wdir --fs-no-reconall --skip-bids-validation \
+    --fs-license-file code/license.txt
+
+
+# restore the jsons we have moved out of the way
+find inputs/data -mindepth 2 -name '*.xyz' -a ! -wholename "$subid" | sed -e "p;s/xyz/json/" | xargs -n2 mv
+
+EOT
 
 
 # the actual compute job specification
@@ -128,50 +172,26 @@ git checkout -b "job-$JOBID"
 # recomputation outside the scope of the original Condor setup
 datalad get -n "inputs/data/${subid}"
 
-# -----------------------------------------------------------------------------
-# FMRIPREP SPECIFIC ADJUSTMENTS - NOT NECESSARY FOR OTHER PIPELINES
-# create workdir for fmriprep inside to simplify singularity call
-# PWD will be available in the container
-mkdir -p .git/tmp/wdir
-# pybids (inside fmriprep) gets angry when it sees dangling symlinks
-# of .json files -- wipe them out, spare only those that belong to
-# the participant we want to process in this job
-find inputs/data -mindepth 2 -name '*.json' -a ! -wholename "$3"'*T*w*' -delete
-
-# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-
-
-
 # ------------------------------------------------------------------------------
-# FIX-ME: Replace the datalad containers-run command starting below with a
-# command that fits your analysis. (Note that the command for CAT processing is
-# quite complex and involves separate scripts - if you are not using CAT
-# processing, remove everything until \; )
+# FIXME: Replace the datalad containers-run command starting below with a
+# command that fits your analysis. Here, it invokes the script "runfmriprep.sh"
+# that contains an fmriprep parametrization.
 
-# the meat of the matter
-# look for T1w files in the input data for the given participant
-# it is critical for reproducibility that the command given to
-# `containers-run` does not rely on any property of the immediate
-# computational environment (env vars, services, etc)
 datalad containers-run \
-   -m "Compute ${subid}" \
-   -n bids-fmriprep \
-   --explicit \
-   -o fmriprep/${subid} \
-   -i inputs/data/${subid}/anat/ \
-   -i code/license.txt \
-    "inputs/data . participant --participant-label $subid --anat-only -w .git/tmp/wdir --fs-no-reconall --skip-bids-validation --fs-license-file {inputs[1]}"
+  -m "Compute ${subid}" \
+  -n bids-fmriprep \
+  --explicit \
+  -o fmriprep/${subid} \
+  -i inputs/data/${subid}/anat/ \
+  -i code/license.txt \
+  "sh code/runfmriprep.sh $subid"
+
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-# it may be that the above command did not yield any outputs
-# and no commit was made (no T1s found for the given participant)
-# we nevertheless push the branch to have a record that this was
-# attempted and did not fail
 
-# file content first -- does not need a lock, no interaction with Git
+# push result file content first - does not need a lock, no interaction with Git
 datalad push --to output-storage
-# and the output branch
+# and the output branch next - needs a lock to prevent concurrency issues
 flock --verbose $DSLOCKFILE git push outputstore
 
 echo SUCCESS
@@ -198,7 +218,7 @@ git_email="$(git config user.email)"
 
 # compute environment for a single job
 #-------------------------------------------------------------------------------
-# FIX-ME: Adjust job requirements to your needs
+# FIXME: Adjust job requirements to your needs
 
 cat > code/process.condor_submit << EOT
 universe       = vanilla
@@ -254,7 +274,7 @@ queue
 EOT
 
 # ------------------------------------------------------------------------------
-# FIX-ME: Adjust the find command below to return the unit over which your
+# FIXME: Adjust the find command below to return the unit over which your
 # analysis should parallelize. Here, subject directories on the first hierarchy
 # level in the input data are returned by searching for the 'sub-*' prefix.
 # The setup below creates an HTCondor DAG.
@@ -282,23 +302,41 @@ datalad save -m "HTCondor submission setup" code/ .gitignore
 
 echo .SLURM_datalad_lock >> .gitignore
 
+cat > code/runJOB.sh << "EOT"
+#!/bin/bash
+#
+# splitting the all.jobs file according to node distribution
+# in the PWD numbered files [1 -> splits] are created and deleted after
+JOBFILE=code/all.jobs
+splits=FIXME
+
+parallel -j${splits} --block -1 -a $JOBFILE --header : --pipepart 'cat > {#}'
+# submitting independent SLURM jobs for efficiency and robustness
+parallel 'sbatch code/catpart.sbatch {}' ::: $(seq ${splits})
+
+EOT
+chmod +x code/runJOB.sh
+
 # SLURM compute environment
 # makes sure that the jobs per node don't exceed RAM and wall clock time !!
 cat > code/process.sbatch << "EOT"
 #!/bin/bash -x
-#SBATCH --account=jinm72
+### If you need a compute time project for job submission set here
+#SBATCH --account=FIXME
 #SBATCH --mail-user=FIXME
 #SBATCH --mail-type=END
 #SBATCH --job-name=FIXME
 #SBATCH --output=logs/processing-out.%j
 #SBATCH --error=logs/processing-err.%j
+### If there's a time limit for job runs, set (max) here
 #SBATCH --time=24:00:00
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=256
-#SBATCH --partition=dc-cpu-bigmem
+### If specific partitions are available i.e. with more RAM define here
+#SBATCH --partition=FIXME
 #SBATCH --nodes=1
 
-srun parallel --delay 0.2  -a code/aomic_cat.jobs --use-cpus-instead-of-cores
+### Define number of jobs that arer run simultaneously
+srun parallel --delay 0.2  -a code/all.jobs --FIXME
 
 wait
 EOT
@@ -306,10 +344,13 @@ EOT
 
 
 # create job.call-file for all commands to call
-# each subject is processed on RAMDISK in an own dataset
-fastdata=/dev/shm/
+# each subject is processed on a temporary/local store in an own dataset
+# FIX-ME: Adjust the temporary_store variable to point to a temporary/scratch
+# location on your system
+temporary_store=/dev/shm/
 
-cat > code/call.cat << EOT
+
+cat > code/call.job << EOT
 #!/bin/bash -x
 #
 # redundant input per subject
@@ -318,15 +359,14 @@ subid=\$1
 
 # define DSLOCKFILE, DATALAD & GIT ENV for participant_job
 export DSLOCKFILE=$(pwd)/.SLURM_datalad_lock \
-DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__100aomic=${input_store}#{id} \
-DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__101cat=${container}#{id} \
+DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__101cat=${containerstore}#{id} \
 GIT_AUTHOR_NAME=\$(git config user.name) \
 GIT_AUTHOR_EMAIL=\$(git config user.email) \
 JOBID=\${subid:4}.\${SLURM_JOB_ID} \
 
 # use subject specific folder
-mkdir $fastdata\${subid}
-cd $fastdata\${subid}
+mkdir ${temporary_store}/\${JOBID}
+cd ${temporary_store}/\${JOBID}
 
 # run things
 $(pwd)/code/participant_job \
@@ -336,26 +376,30 @@ $(git remote get-url --push output) \
 >$(pwd)/logs/\${JOBID}.out \
 2>$(pwd)/logs/\${JOBID}.err
 
+cd ${temporary_store}/
+chmod 777 -R ${temporary_store}/\${JOBID}
+rm -fr ${temporary_store}/\${JOBID}
+
 EOT
 
-chmod +x code/call.cat
+chmod +x code/call.job
 
 # create job-file with commands for all jobs
-cat > code/aomic_cat.jobs << "EOT"
+cat > code/all.jobs << "EOT"
 #!/bin/bash
 EOT
 
 # ------------------------------------------------------------------------------
-# FIX-ME: Adjust the find command below to return the unit over which your
+# FIXME: Adjust the find command below to return the unit over which your
 # analysis should parallelize. Here, subject directories on the first hierarchy
 # level in the input data are returned by searching for the 'sub-*' prefix.
 #
-for s in $(find inputs/aomic/ -maxdepth 1 -type d -name 'sub-*' -printf '%f\n'); do
-  printf "code/call.cat $s\n" >> code/aomic_cat.jobs
+for s in $(find inputs/data -maxdepth 1 -type d -name 'sub-*' -printf '%f\n'); do
+  printf "code/call.job $s\n" >> code/all.jobs
 done
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-chmod +x code/aomic_cat.jobs
+chmod +x code/all.jobs
 datalad save -m "SLURM submission setup" code/ .gitignore
 
 ################################################################################
