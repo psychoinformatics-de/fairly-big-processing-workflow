@@ -24,6 +24,8 @@ This repository contains the following files:
   data and a CAT software container. You can use this file or
   ``bootstrap_test.sh`` to adjust the workflow to your usecase - please edit
   anything with a "FIX-ME" mark-up.
+- ``ukb_cat_processing.md``: A tutorial that describes the necessary procedures
+  to reproduce the CAT-based UK-Biobank processing in Wierzba et al.
 - ``code_cat_standalone_batchUKB.txt``: A Batch file for CAT12 processing. This
   script is relevant to setup the CAT12 processing pipeline reported in
   [Wierzba et al., 2021]()
@@ -39,9 +41,6 @@ This repository contains the following files:
 * [Software requirements](#software-requirements)
 * [Workflow overview](#workflow-overview)
 * [Original analysis of Wierzba et al.](#Reproduce-wierzba-et-al.)
-    * [CAT Software container](#software-container)
-    * [UKBiobank data](#UK-Biobank-data)
-    * [Adjust and run the bootstrapping script](#Adjust-and-run-the-bootstrapping-script)
 * [Adjust the workflow to your own needs](#adjust-the-workflow)
     * [Create a container dataset](#Create-a-container-dataset)
     * [Create an input dataset](#Create-an-input-dataset)
@@ -71,13 +70,41 @@ The machines involved in your workflow need the following software:
 - A job scheduling/batch processing tool such as [HTCondor](https://research.cs.wisc.edu/htcondor/) or
   [SLURM](https://slurm.schedmd.com/documentation.html)
 
-Make sure to have a Git identity set up.
+Make sure to have a Git identity set up (see Installation instructions of
+DataLad for more info).
 
 ## Workflow overview
 
+The framework uses a set of flexible software tools for data, code, and
+computing management to apply established workflows from software development to
+data analyses.
+It consists of tools that on their own perform valuable key tasks for handling
+digital files, such as version control for large and small data, distributed
+data transport logistics, automated digital provenance capture, and parallel job
+scheduling, and combines them into an adaptable setup for reproducible and
+auditable science.
+On a conceptual level, our framework is a scaffolding that sets up file system
+infrastructure to conduct a (containerized) data analysis in a lean, distributed
+network.
+In this network, parallel analysis parts are individual, fully version-controlled
+development histories that can be aggregated (merged) into a main analysis
+revision history, in a similar way to how code is collaboratively developed with
+distributed version control tools.
+
+![](pics/revision_history.png)
+
+The framework performs complex tasks, and is highly adaptable.
+A user can decide which and how much actionable digital provenance about data
+transformations is captured during this analysis, enabling the potential for
+full computational reproducibility.
+
+The figure below illustrates all relevant locations and elements of the
+workflow.
+
+
 ![](https://github.com/datalad-handbook/artwork/blob/master/src/ukbworkflow.svg)
 
-A bootstrapping script will assemble an analysis dataset based on
+A bootstrapping script will assemble an analysis dataset (top left) based on
 - input data
 - containerized software environment
 - optional additional scripts or files
@@ -88,146 +115,39 @@ By default, the computational jobs operate on a per-subject level.
 
 During bootstrapping, two RIA stores (more information at
 [handbook.datalad.org/r.html?RIA](http://handbook.datalad.org/r.html?RIA)) are
-created, one temporary input store used for cloning the analysis, and one
-permanent output store used for collecting the results.
-The analysis dataset is pushed into each store.
+created, one temporary input store used for cloning the analysis (top left), and one
+permanent output store used for collecting the results (middle, center).
+The analysis dataset (top left) is pushed into each store.
 
 After bootstrapping, a user can navigate into the analysis dataset that is
-created in the current directory. Based on available job scheduling system, an
-HTCondor DAG or a SLURM batch file can be submitted.
-The jobs will clone the analysis dataset into temporary locations, retrieve the
-relevant subset of data for a participant-based job, and push their results -
-data and process provenance separately - into the output store.
+created under the current directory. Based on available job scheduling system, an
+HTCondor DAG or a SLURM batch file can be submitted (see HTCondor or SLURM
+specific instructions for a step-by-step submission guide).
 
-After the jobs finished successfully, a user consolidates the results and
-restores file availability. The results of the computation are then accessible
+The jobs (right handside of the image) will clone the analysis dataset into
+temporary locations, retrieve the relevant subset of data for a participant-based
+job, and push their results - data and process provenance separately - into the
+output store.
+Digital provenance (Git history) is pushed separately from data and with a file
+locking mechanism to reduce concurrency issues that could arise when more than
+one branch is pushed at the same time.
+
+After the jobs finished successfully, a user consolidates the results (merges
+all result branches) and restores file availability (relinks Git history and
+result data) (lower left corner).
+All results of the computation and their provenance are then accessible
 from the output store.
 
 We recommend to read and compute the tutorial described in ``tutorial.md`` as a
 small analysis to test the workflow.
-
+It uses open data and pipelines, and should be able to run on a system with
+fulfilled software requirements with only minimal adjustments.
 
 ## Reproduce Wierzba et al.
 
-We have used the workflow to process UK Biobank data with the computational
-anatomy toolbox (CAT) for SPM.
-While we are not able to share the data or container image due to data usage and
-software license restrictions, we share everything that is relevant to create
-these workflow components.
+Instructions how to reproduce the UK Biobank computation reported in Wierzba et
+al. are described in ``ukb_cat_processing.md``
 
-### Software container
-
-The Singularity recipe and documentation on how to build a container Image from
-it and use it can be found at
-[github.com/m-wierzba/cat-container](https://github.com/m-wierzba/cat-container).
-
-#### Transform the software container into a dataset
-
-Any software container can be added to a dataset with the following steps:
-
-Create a dataset:
-```
-$ datalad create pipeline
-$ cd pipeline
-```
-
-Add a software-container to the dataset. The ``--url`` parameter can be a local
-path to your container image, or a URL to a container hub such as Dockerhub or
-Singularity Hub.
-By default, a software container will be called with ``singularity exec
-<image>``. In order to customize this invocation, for example into ``singularity
-run <image> <customcommand>``, use the ``--call-fmt`` argument. Below, the
-invocation is customized to bindmount the current working directory into the
-container, and execute a command instead of the containers' runscript.
-A different example of this is also in the tutorial in this repository.
-
-```
-$ datalad containers-add cat --url <path/or/url/to/image>  \
-  --call-fmt "singularity run -B {{pwd}} --cleanenv {img} {cmd}"
-```
-
-Afterwards, you can use this dataset to link your software container to your
-analysis setup.
-
-### UK Biobank data
-
-Assuming you have [successfully registered for UK Biobank data and have been
-approved](https://www.ukbiobank.ac.uk/enable-your-research/register), you can
-use the DataLad extension
-[datalad-ukbiobank](https://github.com/datalad/datalad-ukbiobank) to transform
-UK Biobank data into a BIDS-like structured dataset. The extension can be used
-when no data has yet been retrieved, but also when data tarballs have already
-been downloaded to local infrastructure. Please consult the software's
-[documentation](http://docs.datalad.org/projects/ukbiobank/en/latest/index.html)
-for more information and tutorials.
-
-### Adjust and run the bootstrapping script
-
-``bootstrap.sh`` sets up the complete CAT analysis set up (relevant input and output
-RIA stores, participant-wise jobs, job submission setup for HTCondor or SLURM)
-automatically, but it requires adjustments to your local paths.
-Within the script, a ``FIX-ME`` markup indicates where adjustments may be
-necessary.
-We recommend to open the file in a text reader of your choice and work through
-the document using a find command to catch all FIX-ME's.
-
-Afterwards, run the script:
-
-```
-bash bootstrap.sh
-```
-
-If you can see the word "SUCCESS" at the end of the log messages in prints to
-your terminal and no suspicious errors/warning, set up completed successfully.
-It will have created a DataLad dataset underneath your current working
-directory, by default under the name ``cat``.
-
-Navigate into this directory, and submit the compute jobs with the job
-scheduling setup you have chosen in ``bootstrap.sh`` (see the general section
-[Job submission](#job-submission)).
-After job completion, perform a few sanity checks, merge the result branches,
-and restore file availability (see the general section [After workflow
-completion](#after-workflow-completion)).
-
-### Working with a UKB-CAT result dataset
-
-As detailed in Wierzba et al., the results of the CAT computation on UKBiobank
-data are wrapped into four tarballs per participant. This allowed us to save
-results in a single dataset (see
-[handbook.datalad.org/r.html?gobig](https://handbook.datalad.org/r.html?gobig)
-for dataset file number limits).
-This result dataset can be used to create special-purpose datasets that contain
-dedicated result subsets and can be used for further analyses.
-
-The code below sketches a setup to create such datasets in a provenance-tracked
-manner:
-
-```
-# create a dataset that includes tissue volume statistics per ROI, parcellation,
-# and subject:
-$ datalad create ukb_tiv
-$ cd ukb_tiv
-# register the ukb results as a subdataset:
-$ datalad clone -d . <path/to/ukb_vbm> inputs/ukb_vbm
-# extract volumes from inforoi.tar.gz and parse them from xml to csv.
-$ datalad run -m "..."
-  --input "inputs/ukb_vbm/sub-*/*/inforoi.tar.gz"
-  --output "stats/"
-  "sh -c 'rm -rf stats; mkdir -p stats; find inputs/ukb_vbm -name inforoi.tar.gz \
-  -print -exec python3 code/tiv_xml2csv.py stats/cat {{}} \\;'"
-# In the end, the ukb_tiv has a CSV file for each parcellation, and each CSV file
-# has one row per subject with the respective tissue statistics.
-
-# For a different use case, but in a similar way,
-# we extracted the vbm results for all subjects using
-$ datalad run -m "..."
-  --input inputs/ukb_vbm/sub-*/*/vbm.tar.gz
-  --output .
-  "rm -rf m0wp1; mkdir -p m0wp1; find inputs/ukb_vbm -name vbm.tar.gz -exec \
-   tar --one-top-level=m0wp1 --strip-components=1 --wildcards -xvf {{}} \
-   '\"'\"'mri/m0wp1*.nii'\"'\"' \\; ; find m0wp1 -name '\"'\"'*.nii'\"'\"' -exec gzip -9 -v {{}} \\;'"
-
-```
 
 ## Adjust the workflow
 
@@ -252,7 +172,7 @@ for an example), but requires experience with Git.
 
 We also recommend to tune your analysis for computational efficiency and minimal
 storage demands. Optimize the compute time of your pipeline, audit carefully
-that only relevant results are saved and remove uncessary results right within
+that only relevant results are saved and remove unnecessary results right within
 your pipeline, and, if necessary, wrap job results into tarballs.
 
 ### Create a container dataset
@@ -264,16 +184,39 @@ showcases an example of this.
 
 When you want to build your own container dataset, create a new dataset and add a
 container from a local path or URL to it.
-An example can be found at
-[handbook.datalad.org/en/latest/r.html?OHBM2020](handbook.datalad.org/en/latest/r.html?OHBM2020).
+
+Create a dataset:
+```
+$ datalad create pipeline
+$ cd pipeline
+```
+
+Add a software-container to the dataset using ``datalad containers-add`` from
+the ``datalad-container`` extension. The ``--url`` parameter can be a local
+path to your container image, or a URL to a container hub such as Dockerhub or
+Singularity Hub.
+
+```
+$ datalad containers-add cat --url <path/or/url/to/image>  \
+  --call-fmt "singularity run -B {{pwd}} --cleanenv {img} {cmd}"
+```
 
 After linking the container to your analysis dataset, the bootstrap script will
 add the container to the top-level analysis dataset.
 Make sure to supply the correct call-format configuration to this call.
 The call format configures how your container is called during the analysis, and
 it can be for example used to preconfigure bind-mounts.
-More information on call-formats can be found in the
+By default, a software container will be called with ``singularity exec
+<image>``. In order to customize this invocation, for example into ``singularity
+run <image> <customcommand>``, use the ``--call-fmt`` argument. Above, the
+invocation is customized to bindmount the current working directory into the
+container, and execute a command instead of the containers' runscript.
+A different example of this is also in the tutorial in this repository, and
+another example can be found at
+[handbook.datalad.org/en/latest/r.html?OHBM2020](handbook.datalad.org/en/latest/r.html?OHBM2020).
+More general information on call-formats can be found in the
 [documentation of ``datalad containers-add``](http://docs.datalad.org/projects/container/en/latest/generated/man/datalad-containers-add.html).
+
 
 ### Create an input dataset
 
@@ -301,10 +244,20 @@ for an overview on how to transform data into datasets.
 
 
 ### Bootstrapping the framework
+
 When both input dataset and the container are accessible, the complete analysis
 dataset and job submission setup can be bootstrapped using ``bootstrap.sh``.
 All relevant adjustments of the file are marked with a "FIX-ME" comments.
 
+``bootstrap.sh`` creates a range of files while it is ran.
+Among others, it will setup a ``code/participant_job.sh`` file. This file is at
+the heart of the computation, and should be a fully portable, self-contained
+script. You should only need to adjust the ``datalad containers-run`` call in
+this file in order to parametrize your pipeline or run your scripts.
+
+If you need custom scripts or other files (such as licenses), you can included
+them into the bootstrap procedure, or save them into your analysis dataset after
+it has been bootstrapped.
 
 ### Testing your setup
 
@@ -319,12 +272,13 @@ to do this:
 - restore file availability information
 - attempt a rerun
 
+If these steps succeed, you can scale up and submit all jobs to your system.
 
 ### Job submission
 
 The workflow can be used with or without job scheduling software. For a
 single-participant job, the script ``code/participant_job.sh`` needs to be
-called with a source dataset, a participant identifier, and an output location
+called with a source dataset, a participant identifier, and an output location.
 ``bootstrap.sh`` contains a setup for HTCondor and SLURM.
 
 When using job scheduling systems other than HTCondor or SLURM, you will need to
@@ -334,11 +288,11 @@ job scheduling setups with a pull request.
 
 #### HTCondor submission
 
-If your HPC systems run HTCondor, the complete analysis can be submitted as a
+If your HTC/HPC systems run HTCondor, the complete analysis can be submitted as a
 Directed Acyclic Graph.
 The bootstrapping script will have created the necessary files - by default,
 jobs are parallelized over subject directories, and specified inside of the file
-``code/process.condor_data``. Job requirements, job-internal environment
+``code/process.condor_dag``. Job requirements, job-internal environment
 variables, and submission setup are specified in ``code/process.condor_submit``.
 If you have adjusted your job setup and
 requirements in the bootstrapping script, you can submit the jobs inside of the
@@ -356,8 +310,8 @@ condor_submit_dag -batch-name UKB -maxidle 1 dag_tmp/process.condor_dag
 
 #### SLURM submission
 
-If your HPC systems run SLURM, the complete analysis submission is built from
-the following set of files:
+If your HTC/HPC systems run SLURM, the complete analysis submission is built from
+the following set of files that are created during bootstrapping:
 
 - ``code/all.jobs`` defines individual computations (by default, subject-wise)
 - ``code/process.sbatch`` defines the compute environment (requires user input!)
@@ -365,8 +319,9 @@ the following set of files:
   (adjustable/extandable) job-internal environment variables
 - ``code/runJOB.sh`` performs the job submission in user-defined split sizes
 
+Please check these files carefully for placeholder FIX-ME annotations.
 If you have adjusted your job setup and requirements in the bootstrapping
-script, you can submit the jobs by executing ``code/runJOB.sh``
+script, you can submit the jobs by executing ``code/runJOB.sh``.
 
 ## After workflow completion
 
@@ -452,10 +407,11 @@ batches of, e.g., 5000:
 $ git merge -m "Merge computing results (5k batch)" $(for i in $(head -5000 ../haveres.txt | tail -5000); do echo origin/$i; done)
 ```
 
-Please note: The Merging operations progressively slows down with a large amount
+Please note: The Merging operations progressively slow down with a large amount
 of branches. When merging ~40k branches in batches of 5000, we saw the following
 merge times (in minutes) for the batches:
 15min,  22min, 32min, 40min, 49min, 58min, 66min
+Depending on your system and analysis, this can take longer.
 
 4. Push the merge back
 
@@ -505,6 +461,7 @@ $ datalad push --data nothing
 At this point, the dataset can be cloned from the datastore, and its file
 contents can be retrieved via ``datalad get``. A recomputation can be done on a
 per-file level with ``datalad rerun``.
+The input RIA store and the analysis dataset can be removed, if you want to.
 
 ## Common problems and how to fix them
 
