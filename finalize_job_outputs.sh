@@ -1,6 +1,7 @@
 #!/bin/bash
 # this script takes a CAT output structure and packages
 # the desired pieces into a set of four compressed tarballs
+# that are reproducible
 
 set -e -u
 
@@ -26,7 +27,22 @@ rm -f "$inputdir"/surf/rh.white."$inputfile".gii
 mkdir -p "$outputdir"
 
 cd "$inputdir"
-tar -czf "$outputdir/inforoi.tar.gz" report/cat* label/cat*
-tar -czf "$outputdir/vbm.tar.gz" mri/m0wp1* mri/mwp1* mri/wp0*
-tar -czf "$outputdir/native.tar.gz" mri/p0* mri_atlas/*
-tar -czf "$outputdir/surface.tar.gz" surf/*
+
+# remove date and timing info from CAT log
+# to make it reproducible on reruns
+sed -i \
+  -e '/^.*<date>.*<\/date>.*$/d' \
+  -e 's,\(.*\)[ >][0-9]\+s</item>,\1...s</item>,' \
+  -e 's,\(.* takes\) [0-9]\+.*second, \1...,' \
+  ./report/cat_sub-*_T1w.xml
+# FIXME if dataset has multiple sessions
+#  ./report/cat_sub-*_ses-*_T1w.xml
+
+
+# deterministic order and permissions, fixed timestamp
+mytar="tar --sort=name --owner=0 --group=0 --numeric-owner --mode=ugo+rwX --mtime=1970-01-01"
+
+$mytar -cO report/cat* label/cat* | gzip -cn9 > "$outputdir/inforoi.tar.gz"
+$mytar -cO mri/m0wp1* mri/mwp1* mri/wp0* | gzip -cn9 > "$outputdir/vbm.tar.gz"
+$mytar -cO mri/p0* mri_atlas/* | gzip -cn9 > "$outputdir/native.tar.gz"
+$mytar -cO surf/* | gzip -cn9 > "$outputdir/surface.tar.gz"
