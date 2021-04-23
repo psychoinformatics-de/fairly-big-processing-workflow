@@ -461,7 +461,16 @@ $ datalad push --data nothing
 At this point, the dataset can be cloned from the datastore, and its file
 contents can be retrieved via ``datalad get``. A recomputation can be done on a
 per-file level with ``datalad rerun``.
-The input RIA store and the analysis dataset can be removed, if you want to.
+The input RIA store can be removed, if you want to.
+
+If you want to recompute analyses for individual subjects, query the Git history
+for commit shasum of individual jobs, and plug them into a ``datalad rerun``
+command (see the tutorial for a quick demo).
+
+If you want to recompute the full sample, resubmit all jobs in the analysis
+dataset, using the existing setup.
+Perform the same merge operation, and check for result changes in the Git
+history.
 
 ## Common problems and how to fix them
 

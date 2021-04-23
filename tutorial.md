@@ -417,3 +417,8 @@ action summary:
   save (notneeded: 2, ok: 1)
 datalad rerun bb75237bd2ffaca78153  335.76s user 79.67s system 5% cpu 2:04:41.81 total
 ```
+
+If you want to recompute the complete sample instead of only individual subjects,
+resubmit the job from the analysis dataset again.
+Afterwards, repeat the merge operation.
+If results have changed, you will see them summarized in the Git history.
