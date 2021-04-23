@@ -195,7 +195,8 @@ would run a full fmriprep workflow, head over to
 handbook.datalad.org/r.html?TODO for information on how to handle merge
 conflicts in the ``CITATION.md`` file.
 
-After you checked that everything is in order...
+First, check that everything is in order, for example by checking that the
+expected directories and files are present:
 
 ```
 $ tree -d fmriprep
@@ -218,7 +219,12 @@ fmriprep
 [...]
 ```
 
-... push the merge back in to the outputstore:
+If you can view your revision history with a tool like [tig](https://jonas.github.io/tig/)
+you should see a colorful merge operation like this:
+
+![](pics/revision_history_forrest.png)
+
+Now you can push the merge back in to the outputstore:
 
 ```
 $ git push
