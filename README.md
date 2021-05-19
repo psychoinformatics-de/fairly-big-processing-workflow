@@ -2,6 +2,8 @@
 
 This repository contains all materials described in Wierzba et al. (2021) and
 can be used as a template to set up similar processing workflows.
+In addition to these tutorials, an automatically recomputable, open processing
+example with this workflow can be found at [github.com/psychoinformatics-de/processing-workflow-tutorial](https://github.com/psychoinformatics-de/processing-workflow-tutorial).
 
 Please cite the corresponding publication when using this workflow or materials
 from it, as well as its underlying software tools.

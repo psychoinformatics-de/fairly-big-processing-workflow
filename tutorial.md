@@ -3,6 +3,8 @@
 This tutorial helps you to set up a preprocessing workflow for [structural data
 of the Studyforrest project](https://github.com/psychoinformatics-de/studyforrest-data-structural)
 with [fmriprep](https://github.com/psychoinformatics-de/studyforrest-data-structural).
+You can find the (retrievable, recomputable) results of this processing routine at [github.com/psychoinformatics-de/processing-workflow-tutorial](github.com/psychoinformatics-de/processing-workflow-tutorial).
+
 
 ### Software requirements and other prerequisites
 
@@ -24,7 +26,7 @@ Please place a freesurfer license file in your home directory.
 Clone this repository to your compute cluster.
 
 ```
-git clone <TODO>
+git clone git@github.com:psychoinformatics-de/processing-workflow.git
 ```
 
 ### Adjust variables to your system
