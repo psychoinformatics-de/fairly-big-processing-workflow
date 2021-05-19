@@ -89,15 +89,15 @@ directory, by default under the name ``cat``.
 
 Navigate into this directory, and submit the compute jobs with the job
 scheduling system of your choice (see the general section
-on Job submission).
+on **Job submission** in the repository [README](./README.md)).
 After job completion, perform a few sanity checks, merge the result branches,
 and restore file availability (see the general section **After workflow
-completion**).
+completion** in the repository [README](./README.md)).
 
 ### Working with a UKB-CAT result dataset
 
 As detailed in Wierzba et al., the results of the CAT computation on UKBiobank
-data are wrapped into four tarballs per participant in order to diskspace and
+data are wrapped into four tarballs per participant in order to save diskspace, inodes, and
 collect the results in a single dataset (see
 [handbook.datalad.org/r.html?gobig](https://handbook.datalad.org/r.html?gobig)
 for dataset file number limits).

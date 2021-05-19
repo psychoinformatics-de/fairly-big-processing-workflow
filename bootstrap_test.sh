@@ -6,7 +6,7 @@ set -e -u
 #       Please adjust every variable within a "FIXME" markup to your          #
 #       filesystem, data, and software container.                             #
 #       Depending on which job scheduling system you use, comment out         #
-#       or remove the irrelevant system.                                      #
+#       or remove the irrelevant system (optional).                           #
 #       More information about this script can be found in the README.        #
 #                                                                             #
 ###############################################################################
@@ -70,7 +70,8 @@ git commit --amend -m 'Register pipeline dataset'
 # ------------------------------------------------------------------------------
 # FIXME: If you need custom scripts, copy them into the analysis source
 # dataset. If you don't need custom scripts, remove the copy and commit
-# operations below. (The scripts below are only relevant for CAT processing)
+# operations below. A freesurfer license file (expected to lie in your home
+# directory is copied into the dataset in order to be available for fmriprep
 cp ~/license.txt code/license.txt
 datalad save -m "Add Freesurfer license file"
 #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -101,7 +102,6 @@ cat > code/runfmriprep.sh << "EOT"
 
 subid=$1
 
-# -----------------------------------------------------------------------------
 # create workdir for fmriprep inside the dataset to simplify singularity call
 # PWD will be available in the container
 mkdir -p .git/tmp/wdir
@@ -129,7 +129,9 @@ find inputs/data -mindepth 2 -name '*.xyz' -a ! -wholename "$subid" | sed -e "p;
 EOT
 
 
-# the actual compute job specification
+# the actual compute job specification. This is a bash script that is used to
+# perform the computation in a job. It is fully portable, and this portability
+# is crucial for infrastructure-independent recomputations.
 cat > code/participant_job << "EOT"
 #!/bin/bash
 
@@ -204,7 +206,7 @@ mkdir logs
 echo logs >> .gitignore
 
 ###############################################################################
-# HTCONDOR SETUP START - remove or adjust this according to your needs.
+# HTCONDOR SETUP START - FIXME remove or adjust this according to your needs.
 ###############################################################################
 
 # HTCondor compute setup
@@ -245,7 +247,7 @@ executable     = \$ENV(PWD)/code/participant_job
 #     write access to the output dataset
 # - DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__...:
 #     (additional) locations for datalad to locate relevant subdatasets, in case
-#     a configured URL is outdated
+#     a configured URL is outdated (optional)
 # - GIT_AUTHOR_...: Identity information used to save dataset changes in compute
 #     jobs
 environment = "\\
@@ -297,7 +299,7 @@ datalad save -m "HTCondor submission setup" code/ .gitignore
 
 
 ################################################################################
-# SLURM SETUP START - remove or adjust to your needs
+# SLURM SETUP START - FIXME remove or adjust to your needs
 ################################################################################
 
 echo .SLURM_datalad_lock >> .gitignore
@@ -318,7 +320,8 @@ EOT
 chmod +x code/runJOB.sh
 
 # SLURM compute environment
-# makes sure that the jobs per node don't exceed RAM and wall clock time !!
+# makes sure that the jobs per node don't exceed RAM and wall clock time
+# FIXME individual variables that require user input have FIXME values
 cat > code/process.sbatch << "EOT"
 #!/bin/bash -x
 ### If you need a compute time project for job submission set here
@@ -335,8 +338,8 @@ cat > code/process.sbatch << "EOT"
 #SBATCH --partition=FIXME
 #SBATCH --nodes=1
 
-### Define number of jobs that arer run simultaneously
-srun parallel --delay 0.2  -a code/all.jobs --FIXME
+### Define number of jobs that are run simultaneously
+srun parallel --delay 0.2  -a code/all.jobs -j FIXME
 
 wait
 EOT

@@ -18,19 +18,19 @@ This repository contains the following files:
   filesystem, and can be ran as a quick example provided the software
   requirements are met.
 - ``tutorial.md``: A tutorial to setup a self-contained analysis from
-  ``bootstrap_test.sh``
+  ``bootstrap_test.sh``. Read this in order to understand and use ``bootstrap_test.sh``.
 - ``bootstrap.sh``: This script bootstraps the analysis workflow from scratch
   presented in Wierzba et al. (2021) from scratch. Running it requires UKBiobank
   data and a CAT software container. You can use this file or
   ``bootstrap_test.sh`` to adjust the workflow to your usecase - please edit
   anything with a "FIX-ME" mark-up.
 - ``ukb_cat_processing.md``: A tutorial that describes the necessary procedures
-  to reproduce the CAT-based UK-Biobank processing in Wierzba et al.
+  to reproduce the CAT-based UK-Biobank processing in Wierzba et al. Read this in order to understand and use ``bootstrap.sh``
 - ``code_cat_standalone_batchUKB.txt``: A Batch file for CAT12 processing. This
   script is relevant to setup the CAT12 processing pipeline reported in
   [Wierzba et al., 2021]()
 - ``finalize_job_outputs``: A script that wraps up CAT processing outputs into
-  tarballs
+  tarballs. This script is relevant to setup the CAT12 processing pipeline reported in [Wierzba et al., 2021]()
 
 
 
@@ -40,7 +40,7 @@ This repository contains the following files:
 <!--ts-->
 * [Software requirements](#software-requirements)
 * [Workflow overview](#workflow-overview)
-* [Original analysis of Wierzba et al.](#Reproduce-wierzba-et-al.)
+* [Original analysis of Wierzba et al.](#reproduce-wierzba-et-al.)
 * [Adjust the workflow to your own needs](#adjust-the-workflow)
     * [Create a container dataset](#Create-a-container-dataset)
     * [Create an input dataset](#Create-an-input-dataset)
@@ -157,8 +157,8 @@ tutorial provided in this repository in order to ensure that the workflow works
 in principle on your system.
 
 The workflow is tuned towards analyses that operate on a per participant level.
-The adjustment is easiest if you have an input dataset with a BIDS-like structure
-(sub-xxx directories on the first level of your input dataset), because the job
+The adjustment is easiest if you have an input dataset with a [BIDS-like](https://bids.neuroimaging.io/) structure
+(``sub-xxx`` directories on the first level of your input dataset), because the job
 submission setup for HTCondor and SLURM works by finding subject directories and
 building jobs based on these identifiers. If your input data is differently
 structured, make sure to adjust the ``find`` command in the relevant section of
@@ -174,6 +174,7 @@ We also recommend to tune your analysis for computational efficiency and minimal
 storage demands. Optimize the compute time of your pipeline, audit carefully
 that only relevant results are saved and remove unnecessary results right within
 your pipeline, and, if necessary, wrap job results into tarballs.
+Any minute of compute time or Gigabyte of result disk-space you save is multiplied thousandfold in large scale datasets.
 
 ### Create a container dataset
 
@@ -334,8 +335,9 @@ the storage sibling of the RIA remote.
 
 1. Clone the output dataset from the RIA store into a temporary location.
 
+The necessary RIA URL is based on the globally unique dataset ID.
 You can find out which ID the dataset has in the RIA store by running ``datalad
--f '{infos[dataset][id]}' wtf -S dataset`` in the analysis dataset.
+-f '{infos[dataset][id]}' wtf -S dataset`` in the analysis dataset, or by taking a look into the file ``.datalad/config``.
 
 ```
 $ cd /tmp
@@ -371,6 +373,7 @@ relevant files and thus no output is produced in a successful job), compare its
 most recent commit to the commit that identifies the analysis source dataset
 state prior to computation. Where it is identical, the compute job hasn't
 produced new outputs.
+In the case of the UKBiobank dataset, this for happened when a participant did not have a T1-weighted image and the CAT outputs could not be computed.
 
 ```
 # show commit hash of the main development branch (replace with main if needed)
@@ -465,7 +468,7 @@ The input RIA store can be removed, if you want to.
 
 If you want to recompute analyses for individual subjects, query the Git history
 for commit shasum of individual jobs, and plug them into a ``datalad rerun``
-command (see the tutorial for a quick demo).
+command (see the ``tutorial.md`` for a quick demo).
 
 If you want to recompute the full sample, resubmit all jobs in the analysis
 dataset, using the existing setup.

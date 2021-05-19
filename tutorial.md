@@ -10,7 +10,7 @@ with [fmriprep](https://github.com/psychoinformatics-de/studyforrest-data-struct
 - The DataLad extension [datalad-container](http://docs.datalad.org/projects/container/en/latest/index.html)
 - Singularity
 - [flock](https://linux.die.net/man/1/flock)
-- HTCondor (TODO: SLURM)
+- HTCondor
 - a freesurfer license file ([free
   registration](https://surfer.nmr.mgh.harvard.edu/registration.html) required)
 
@@ -34,7 +34,7 @@ Open it in an editor of your choice, and adjust the following fields:
 
 - ``output_store`` and ``input_store``: Please provide RIA URLs to a place where
   an input and an output store can be created. These locations should be
-  writable by you. More information on RIA stores and RIA URLs is at
+  writable by you, and take the form ``ria+ssh://[user@]hostname:/absolute/path/to/ria-store`` or ``ria+file:///absolute/path/to/ria-store``. More information on RIA stores and RIA URLs is at
   [handbook.datalad.org/r.html?RIA](http://handbook.datalad.org/r.html?RIA)
 
 No other adjustments should be necessary. Optionally, you can
@@ -92,7 +92,7 @@ Submitting job(s).
 
 You can monitor the execution of the jobs via standard HTCondor commands such as
 ``condor_q -nobatch`` or by checking the log files that will be collected in the
-directory ``logs```and in ``code/process.condor_dag*`` files.
+directory ``logs`` and in ``code/process.condor_dag*`` files.
 
 When the jobs have finished, make sure that all jobs finished successfully, for
 example by querying the log files for the word "SUCCESS".
@@ -192,7 +192,7 @@ Merge made by the 'octopus' strategy.
 ```
 This works well because different jobs never modified the same file. If you
 would run a full fmriprep workflow, head over to
-handbook.datalad.org/r.html?TODO for information on how to handle merge
+[handbook.datalad.org/r.html?runhcp](http://handbook.datalad.org/en/latest/r.html?runhcp) for information on how to handle merge
 conflicts in the ``CITATION.md`` file.
 
 First, check that everything is in order, for example by checking that the

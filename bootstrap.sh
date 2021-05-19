@@ -3,7 +3,7 @@ set -e -u
 ###############################################################################
 #                               HOW TO USE                                    #
 #                                                                             #
-#       Please adjust every variable within a "FIX-ME" markup to your         #
+#       Please adjust every variable within a "FIXME" markup to your          #
 #       filesystem, data, and software container.                             #
 #       Depending on which job scheduling system you use, comment out         #
 #       or remove the irrelevant system.                                      #
@@ -14,7 +14,7 @@ set -e -u
 
 # Jobs are set up to not require a shared filesystem (except for the lockfile)
 # ------------------------------------------------------------------------------
-# FIX-ME: Supply a RIA-URL to a RIA store that will collect all outputs, and a
+# FIXME: Supply a RIA-URL to a RIA store that will collect all outputs, and a
 # RIA-URL to a different RIA store from which the dataset will be cloned from.
 # Both RIA stores will be created if they don't yet exist.
 output_store="ria+file:///data/group/psyinf/forrestoutput"
@@ -23,8 +23,8 @@ input_store="ria+file:///data/group/psyinf/forrestinput"
 
 
 # ------------------------------------------------------------------------------
-# FIX-ME: Supply the name of container you have registered (see README for info)
-# FIX-ME: Supply a path or URL to the place where your container dataset is
+# FIXME: Supply the name of container you have registered (see README for info)
+# FIXME: Supply a path or URL to the place where your container dataset is
 # located, and a path or URL to the place where an input (super)dataset exists.
 containername='cat'
 containerstore="ria+http://containers.ds.inm7.de"
@@ -33,8 +33,8 @@ data="https://github.com/psychoinformatics-de/studyforrest-data-structural.git"
 
 
 #-------------------------------------------------------------------------------
-# FIX-ME: Replace this name with a dataset name of your choice.
-source_ds="forrest_cat"
+# FIXME: Replace this name with a dataset name of your choice.
+source_ds="cat"
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
@@ -49,7 +49,7 @@ datalad clone -d . "${containerstore}#~${containername}" code/pipeline
 
 # Register the container in the top-level dataset.
 #-------------------------------------------------------------------------------
-# FIX-ME: If necessary, configure your own container call in the --call-fmt
+# FIXME: If necessary, configure your own container call in the --call-fmt
 # argument. If your container does not need a custom call format, remove the
 # --call-fmt flag and its options below.
 datalad containers-add \
@@ -65,7 +65,7 @@ git commit --amend -m 'Register pipeline dataset'
 
 # import custom code
 # ------------------------------------------------------------------------------
-# FIX-ME: If you need custom scripts, copy them into the analysis source
+# FIXME: If you need custom scripts, copy them into the analysis source
 # dataset. If you don't need custom scripts, remove the copy and commit
 # operations below. (The scripts below are only relevant for CAT processing)
 cp /data/group/psyinf/ukb_workflow_template/finalize_job_outputs.sh code
@@ -133,7 +133,7 @@ git checkout -b "job-$JOBID"
 datalad get -n "inputs/data/${subid}"
 
 # ------------------------------------------------------------------------------
-# FIX-ME: Replace the datalad containers-run command starting below with a
+# FIXME: Replace the datalad containers-run command starting below with a
 # command that fits your analysis. (Note that the command for CAT processing is
 # quite complex and involves separate scripts - if you are not using CAT
 # processing, remove everything until \; )
@@ -189,7 +189,7 @@ mkdir logs
 echo logs >> .gitignore
 
 ###############################################################################
-# HTCONDOR SETUP START - remove or adjust this according to your needs.
+# HTCONDOR SETUP START - FIXME remove or adjust this according to your needs.
 ###############################################################################
 
 # HTCondor compute setup
@@ -203,7 +203,7 @@ git_email="$(git config user.email)"
 
 # compute environment for a single job
 #-------------------------------------------------------------------------------
-# FIX-ME: Adjust job requirements to your needs
+# FIXME: Adjust job requirements to your needs
 
 cat > code/process.condor_submit << EOT
 universe       = vanilla
@@ -259,7 +259,7 @@ queue
 EOT
 
 # ------------------------------------------------------------------------------
-# FIX-ME: Adjust the find command below to return the unit over which your
+# FIXME: Adjust the find command below to return the unit over which your
 # analysis should parallelize. Here, subject directories on the first hierarchy
 # level in the input data are returned by searching for the 'sub-*' prefix.
 # The setup below creates an HTCondor DAG.
@@ -282,7 +282,7 @@ datalad save -m "HTCondor submission setup" code/ .gitignore
 
 
 ################################################################################
-# SLURM SETUP START - remove or adjust to your needs
+# SLURM SETUP START - FIXME remove or adjust to your needs
 ################################################################################
 
 echo .SLURM_datalad_lock >> .gitignore
