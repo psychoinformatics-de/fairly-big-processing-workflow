@@ -32,7 +32,7 @@ cd "$inputdir"
 # to make it reproducible on reruns
 sed -i \
   -e '/^.*<date>.*<\/date>.*$/d' \
-  -e 's,\(.*\)[ >][0-9]\+s</item>,\1...s</item>,' \
+  -e 's,\(.*[ >]\)[0-9]\+s</item>,\1...s</item>,' \
   -e 's,\(.* takes\) [0-9]\+.*second, \1...,' \
   ./report/cat_sub-*_T1w.xml
 # FIXME if dataset has multiple sessions
