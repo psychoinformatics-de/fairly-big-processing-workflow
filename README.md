@@ -14,20 +14,20 @@ from it, as well as its underlying software tools.
 
 This repository contains the following files:
 
-- ``bootstrap_test.sh``: A self-contained example analysis with HTCondor with
+- ``bootstrap_forrest_fmriprep.sh``: A self-contained example analysis with HTCondor with
   openly shared structural MRI data from the Studyforrest project and a
   structural pipeline. It requires minimal adjustments of file paths to your
   filesystem, and can be ran as a quick example provided the software
   requirements are met.
 - ``tutorial.md``: A tutorial to setup a self-contained analysis from
-  ``bootstrap_test.sh``. Read this in order to understand and use ``bootstrap_test.sh``.
-- ``bootstrap.sh``: This script bootstraps the analysis workflow from scratch
+  ``bootstrap_forrest_fmriprep.sh``. Read this in order to understand and use ``bootstrap_forrest_fmriprep.sh``.
+- ``bootstrap_ukb_cat.sh``: This script bootstraps the analysis workflow from scratch
   presented in Wierzba et al. (2021) from scratch. Running it requires UKBiobank
   data and a CAT software container. You can use this file or
-  ``bootstrap_test.sh`` to adjust the workflow to your usecase - please edit
+  ``bootstrap_forrest_fmriprep.sh`` to adjust the workflow to your usecase - please edit
   anything with a "FIX-ME" mark-up.
 - ``ukb_cat_processing.md``: A tutorial that describes the necessary procedures
-  to reproduce the CAT-based UK-Biobank processing in Wierzba et al. Read this in order to understand and use ``bootstrap.sh``
+  to reproduce the CAT-based UK-Biobank processing in Wierzba et al. Read this in order to understand and use ``bootstrap_ukb_cat.sh``
 - ``code_cat_standalone_batchUKB.txt``: A Batch file for CAT12 processing. This
   script is relevant to setup the CAT12 processing pipeline reported in
   [Wierzba et al., 2021]()
@@ -249,10 +249,10 @@ for an overview on how to transform data into datasets.
 ### Bootstrapping the framework
 
 When both input dataset and the container are accessible, the complete analysis
-dataset and job submission setup can be bootstrapped using ``bootstrap.sh``.
+dataset and job submission setup can be bootstrapped using ``bootstrap_ukb_cat.sh``.
 All relevant adjustments of the file are marked with a "FIX-ME" comments.
 
-``bootstrap.sh`` creates a range of files while it is ran.
+``bootstrap_ukb_cat.sh`` creates a range of files while it is ran.
 Among others, it will setup a ``code/participant_job.sh`` file. This file is at
 the heart of the computation, and should be a fully portable, self-contained
 script. You should only need to adjust the ``datalad containers-run`` call in
@@ -282,7 +282,7 @@ If these steps succeed, you can scale up and submit all jobs to your system.
 The workflow can be used with or without job scheduling software. For a
 single-participant job, the script ``code/participant_job.sh`` needs to be
 called with a source dataset, a participant identifier, and an output location.
-``bootstrap.sh`` contains a setup for HTCondor and SLURM.
+``bootstrap_ukb_cat.sh`` contains a setup for HTCondor and SLURM.
 
 When using job scheduling systems other than HTCondor or SLURM, you will need to
 create the necessary submit files yourself. The ``participant_job.sh`` should
@@ -504,7 +504,7 @@ push" operation. It prevents that more than one process push their results at
 the same time by holding a single shared lockfile for the duration of the
 process, and only starting the process when the lockfile is free.
 You will not need to create, remove, or care about the lockfile, the setup in
-``bootstrap.sh`` suffices.
+``bootstrap_ukb_cat.sh`` suffices.
 
 
 ## Further workflow adjustments

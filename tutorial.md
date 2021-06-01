@@ -31,7 +31,7 @@ git clone git@github.com:psychoinformatics-de/processing-workflow.git
 
 ### Adjust variables to your system
 
-The relevant file for this tutorial is ``bootstrap_test.sh``.
+The relevant file for this tutorial is ``bootstrap_forrest_fmriprep.sh``.
 Open it in an editor of your choice, and adjust the following fields:
 
 - ``output_store`` and ``input_store``: Please provide RIA URLs to a place where
@@ -51,10 +51,10 @@ No other adjustments should be necessary. Optionally, you can
 
 ### Bootstrap the analysis
 
-Execute ``bootstrap_test.sh`` by running
+Execute ``bootstrap_forrest_fmriprep.sh`` by running
 
 ```
-$ bash bootstrap_test.sh
+$ bash bootstrap_forrest_fmriprep.sh
 ```
 
 This command will:
