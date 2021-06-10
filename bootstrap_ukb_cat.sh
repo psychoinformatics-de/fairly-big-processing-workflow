@@ -236,7 +236,7 @@ executable     = \$ENV(PWD)/code/participant_job
 environment = "\\
   JOBID=\$(subject).\$(Cluster) \\
   DSLOCKFILE=\$ENV(PWD)/.condor_datalad_lock \\
-  DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__101cat='{containerstore}#{id}' \\
+  DATALAD_GET_SUBDATASET__SOURCE__CANDIDATE__101cat='${containerstore}#{id}' \\
   GIT_AUTHOR_NAME='${git_name}' \\
   GIT_AUTHOR_EMAIL='${git_email}' \\
   "
