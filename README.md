@@ -67,13 +67,15 @@ The machines involved in your workflow need the following software:
 - [datalad-container](http://docs.datalad.org/projects/container/en/latest/index.html#),
   a DataLad extension for working with containerized software environments that
   can be installed using [pip](https://pip.pypa.io/en/stable/): ``pip install datalad-container``.
-- [Singularity](https://sylabs.io/docs/)
+- [Singularity](https://sylabs.io/docs/) or [Docker](https://www.docker.com/)
 - The Unix tool [flock](https://linux.die.net/man/1/flock) for file locking
 - A job scheduling/batch processing tool such as [HTCondor](https://research.cs.wisc.edu/htcondor/) or
   [SLURM](https://slurm.schedmd.com/documentation.html)
 
 Make sure to have a Git identity set up (see Installation instructions of
 DataLad for more info).
+
+A machine that re-executes results obtained with the workflow needs  [datalad](https://www.datalad.org/), [datalad-container](http://docs.datalad.org/projects/container/en/latest/index.html#), and the chosen software container solution (Singularity or Docker).
 
 ## Workflow overview
 
@@ -210,7 +212,7 @@ Make sure to supply the correct call-format configuration to this call.
 The call format configures how your container is called during the analysis, and
 it can be for example used to preconfigure bind-mounts.
 By default, a software container will be called with ``singularity exec
-<image>``. In order to customize this invocation, for example into ``singularity
+<image>`` or ``docker run -w "/tmp"--rm --interactive <image>``, depending on whether the container is a Docker or Singularity container. In order to customize this invocation, for example into ``singularity
 run <image> <customcommand>``, use the ``--call-fmt`` argument. Above, the
 invocation is customized to bindmount the current working directory into the
 container, and execute a command instead of the containers' runscript.
@@ -403,8 +405,8 @@ done | tee /tmp/haveres.txt
 ```
 
 
-If there are less than 5000 branches to merge, you will probably be fine by
-merging all branches at once. With more branches, the branch names can exceed
+Unless branches have very long names, if there are less than a few thousand branches to merge, you will probably be fine by
+merging all branches at once. With more branches, or very long branch names, the list of branch names can exceed
 your terminal length limitation. In these cases, we recommend merging them in
 batches of, e.g., 5000:
 
@@ -471,6 +473,8 @@ The input RIA store can be removed, if you want to.
 If you want to recompute analyses for individual subjects, query the Git history
 for commit shasum of individual jobs, and plug them into a ``datalad rerun``
 command (see the ``tutorial.md`` for a quick demo).
+Note that this requires the container solution used during workflow execution.
+A result from a workflow ran with Docker on a private Laptop can not be re-executed on an HPC system with Singularity but no Docker support.
 
 If you want to recompute the full sample, resubmit all jobs in the analysis
 dataset, using the existing setup.
