@@ -1,6 +1,6 @@
 # A template for decentralized, reproducible processing
 
-This repository contains all materials described in Wierzba et al. (2021) and
+This repository contains all materials described in Wagner, Waite, Wierzba et al. (2021) and
 can be used as a template to set up similar processing workflows.
 In addition to these tutorials, an automatically recomputable, open processing
 example with this workflow can be found at [github.com/psychoinformatics-de/processing-workflow-tutorial](https://github.com/psychoinformatics-de/processing-workflow-tutorial).
@@ -8,7 +8,7 @@ example with this workflow can be found at [github.com/psychoinformatics-de/proc
 Please cite the corresponding publication when using this workflow or materials
 from it, as well as its underlying software tools.
 
-- [ADD Wierzba et al. 2021]
+- [Wagner, Waite, Wierzba et al. 2021](https://www.biorxiv.org/content/10.1101/2021.10.12.464122v1)
 - [datalad](https://zenodo.org/record/4495661#.YEuShCUo8UE):
   Hanke, Michael, Halchenko, Yaroslav O., Poldrack, Benjamin, Meyer, Kyle, Solanky, Debanjum Singh, Alteva, Gergana, … Nichols, B. Nolan. (2021, February 2). datalad/datalad: ## 0.14.0 (February 02, 2021) (Version 0.14.0). Zenodo. http://doi.org/10.5281/zenodo.4495661
 
@@ -22,17 +22,17 @@ This repository contains the following files:
 - ``tutorial.md``: A tutorial to setup a self-contained analysis from
   ``bootstrap_forrest_fmriprep.sh``. Read this in order to understand and use ``bootstrap_forrest_fmriprep.sh``.
 - ``bootstrap_ukb_cat.sh``: This script bootstraps the analysis workflow from scratch
-  presented in Wierzba et al. (2021) from scratch. Running it requires UKBiobank
+  presented in Wagner, Waite, Wierzba et al. (2021) from scratch. Running it requires UKBiobank
   data and a CAT software container. You can use this file or
   ``bootstrap_forrest_fmriprep.sh`` to adjust the workflow to your usecase - please edit
   anything with a "FIX-ME" mark-up.
 - ``ukb_cat_processing.md``: A tutorial that describes the necessary procedures
-  to reproduce the CAT-based UK-Biobank processing in Wierzba et al. Read this in order to understand and use ``bootstrap_ukb_cat.sh``
+  to reproduce the CAT-based UK-Biobank processing in Wagner, Waite, Wierzba et al. Read this in order to understand and use ``bootstrap_ukb_cat.sh``
 - ``code_cat_standalone_batchUKB.txt``: A Batch file for CAT12 processing. This
   script is relevant to setup the CAT12 processing pipeline reported in
-  [Wierzba et al., 2021]()
+  [Wagner, Waite, Wierzba et al., 2021](https://www.biorxiv.org/content/10.1101/2021.10.12.464122v1)
 - ``finalize_job_outputs``: A script that wraps up CAT processing outputs into
-  tarballs. This script is relevant to setup the CAT12 processing pipeline reported in [Wierzba et al., 2021]()
+  tarballs. This script is relevant to setup the CAT12 processing pipeline reported in [Wagner, Waite, Wierzba et al., 2021](https://www.biorxiv.org/content/10.1101/2021.10.12.464122v1)
 
 
 
@@ -147,9 +147,9 @@ small analysis to test the workflow.
 It uses open data and pipelines, and should be able to run on a system with
 fulfilled software requirements with only minimal adjustments.
 
-## Reproduce Wierzba et al.
+## Reproduce Wagner, Waite, Wierzba et al.
 
-Instructions how to reproduce the UK Biobank computation reported in Wierzba et
+Instructions how to reproduce the UK Biobank computation reported in Wagner, Waite, Wierzba et
 al. are described in ``ukb_cat_processing.md``
 
 
@@ -330,7 +330,7 @@ script, you can submit the jobs by executing ``code/runJOB.sh``.
 
 ## After workflow completion
 
-As described in more detail in Wierzba et al. (2021), the results of the
+As described in more detail in Wagner, Waite, Wierzba et al. (2021), the results of the
 computation exist on separate branches in the output dataset.
 They need to be merged into the main branch and connected to the result data in
 the storage sibling of the RIA remote.
