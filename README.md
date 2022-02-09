@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/361741462.svg)](https://zenodo.org/badge/latestdoi/361741462)
+
 # A template for decentralized, reproducible processing
 
 This repository contains all materials described in Wagner, Waite, Wierzba et al. (2021) and
