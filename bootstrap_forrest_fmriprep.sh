@@ -114,7 +114,7 @@ mkdir -p .git/tmp/wdir
 # After job completion, the jsons will be restored.
 # See https://github.com/bids-standard/pybids/issues/631 for more information.
 
-find inputs/data -mindepth 2 -name '*.json' -a ! -wholename "$subid" | sed -e "p;s/json/xyz/" | xargs -n2 mv
+find inputs/data -mindepth 2 -name '*.json' -a ! -wholename "$subid" | sed -e "p;s/json/xyz/" | xargs --no-run-if-empty -n2 mv
 
 # execute fmriprep. Its runscript is available as /singularity within the
 # container. Custom fmriprep parametrization can be done here.
@@ -124,7 +124,7 @@ find inputs/data -mindepth 2 -name '*.json' -a ! -wholename "$subid" | sed -e "p
 
 
 # restore the jsons we have moved out of the way
-find inputs/data -mindepth 2 -name '*.xyz' -a ! -wholename "$subid" | sed -e "p;s/xyz/json/" | xargs -n2 mv
+find inputs/data -mindepth 2 -name '*.xyz' -a ! -wholename "$subid" | sed -e "p;s/xyz/json/" | xargs --no-run-if-empty -n2 mv
 
 EOT
 
