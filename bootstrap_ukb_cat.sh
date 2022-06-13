@@ -79,9 +79,9 @@ git commit --no-edit --amend --author "Felix Hoffstaedter <f.hoffstaedter@fz-jue
 
 # create dedicated input and output locations. Results will be pushed into the
 # output sibling and the analysis will start with a clone from the input sibling.
-datalad create-sibling-ria -s output "${output_store}"
+datalad create-sibling-ria --new-store-ok -s output "${output_store}"
 pushremote=$(git remote get-url --push output)
-datalad create-sibling-ria -s input --storage-sibling off "${input_store}"
+datalad create-sibling-ria --new-store-ok -s input --storage-sibling off "${input_store}"
 
 # register the input dataset
 datalad clone -d . ${data} inputs/data
